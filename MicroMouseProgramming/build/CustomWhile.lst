@@ -1,0 +1,586 @@
+ARM GAS  C:\Temp\ccigjz0U.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 1
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"CustomWhile.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "Core/Src/CustomWhile.c"
+  20              		.section	.rodata.CustomWhile.str1.4,"aMS",%progbits,1
+  21              		.align	2
+  22              	.LC0:
+  23 0000 4A4A4100 		.ascii	"JJA\000"
+  24              		.align	2
+  25              	.LC1:
+  26 0004 33303939 		.ascii	"3099\000"
+  26      00
+  27              		.section	.text.CustomWhile,"ax",%progbits
+  28              		.align	1
+  29              		.global	CustomWhile
+  30              		.syntax unified
+  31              		.thumb
+  32              		.thumb_func
+  34              	CustomWhile:
+  35              	.LFB909:
+   1:Core/Src/CustomWhile.c **** #include "main.h"
+   2:Core/Src/CustomWhile.c **** #include "CustomWhile.h"
+   3:Core/Src/CustomWhile.c **** #include "usb_device.h"
+   4:Core/Src/CustomWhile.c **** 
+   5:Core/Src/CustomWhile.c **** #include "math.h"
+   6:Core/Src/CustomWhile.c **** #include <string.h>
+   7:Core/Src/CustomWhile.c **** #include <stdio.h>
+   8:Core/Src/CustomWhile.c **** #include <stdbool.h>
+   9:Core/Src/CustomWhile.c **** #include <stdint.h>
+  10:Core/Src/CustomWhile.c **** 
+  11:Core/Src/CustomWhile.c **** 
+  12:Core/Src/CustomWhile.c **** bool diag_ProSW[2];
+  13:Core/Src/CustomWhile.c **** bool diag_ProLED[3]; 
+  14:Core/Src/CustomWhile.c **** extern uint8_t IMUCheck;
+  15:Core/Src/CustomWhile.c **** extern float IMU_Accel[3]; 
+  16:Core/Src/CustomWhile.c **** extern float IMU_Gyro[3]; 
+  17:Core/Src/CustomWhile.c **** bool diag_IR_LEDs[6];
+  18:Core/Src/CustomWhile.c **** extern uint32_t IR_LED_TIMER; 
+  19:Core/Src/CustomWhile.c **** extern uint16_t ADC1s[9];
+  20:Core/Src/CustomWhile.c **** extern uint16_t ADC2s[9];
+  21:Core/Src/CustomWhile.c **** uint16_t ADC_H[9] = {0,0,0,0,0,0,0,0,0};
+  22:Core/Src/CustomWhile.c **** uint16_t ADC_L[9] = {0,0,0,0,0,0,0,0,0};
+ARM GAS  C:\Temp\ccigjz0U.s 			page 2
+
+
+  23:Core/Src/CustomWhile.c **** uint16_t diag_MOT_L[2] = {0,0};
+  24:Core/Src/CustomWhile.c **** uint16_t diag_MOT_R[2] = {0,0};
+  25:Core/Src/CustomWhile.c **** 
+  26:Core/Src/CustomWhile.c **** 
+  27:Core/Src/CustomWhile.c **** 
+  28:Core/Src/CustomWhile.c **** void CustomWhile(void){
+  36              		.loc 1 28 23 view -0
+  37              		.cfi_startproc
+  38              		@ args = 0, pretend = 0, frame = 0
+  39              		@ frame_needed = 0, uses_anonymous_args = 0
+  40 0000 2DE9F041 		push	{r4, r5, r6, r7, r8, lr}
+  41              		.cfi_def_cfa_offset 24
+  42              		.cfi_offset 4, -24
+  43              		.cfi_offset 5, -20
+  44              		.cfi_offset 6, -16
+  45              		.cfi_offset 7, -12
+  46              		.cfi_offset 8, -8
+  47              		.cfi_offset 14, -4
+  29:Core/Src/CustomWhile.c **** 
+  30:Core/Src/CustomWhile.c **** 
+  31:Core/Src/CustomWhile.c ****     uint16_t header = "JJA"; //seemed unique enough
+  48              		.loc 1 31 5 view .LVU1
+  49              	.LVL0:
+  32:Core/Src/CustomWhile.c ****     uint16_t terminator = "3099"; //seemed unique enough
+  50              		.loc 1 32 5 view .LVU2
+  51              		.loc 1 32 14 is_stmt 0 view .LVU3
+  52 0004 624C     		ldr	r4, .L15
+  53              	.LVL1:
+  33:Core/Src/CustomWhile.c **** 
+  34:Core/Src/CustomWhile.c ****     //SIMULINK BYTE UNPACKING AND DEMUXING MUST MATCH THIS
+  35:Core/Src/CustomWhile.c **** 
+  36:Core/Src/CustomWhile.c ****     diag_ProSW[0] = HAL_GPIO_ReadPin(SW1_GPIO_Port,SW1_Pin);
+  54              		.loc 1 36 5 is_stmt 1 view .LVU4
+  55              		.loc 1 36 21 is_stmt 0 view .LVU5
+  56 0006 634E     		ldr	r6, .L15+4
+  57 0008 4021     		movs	r1, #64
+  58 000a 3046     		mov	r0, r6
+  59 000c FFF7FEFF 		bl	HAL_GPIO_ReadPin
+  60              	.LVL2:
+  61 0010 0038     		subs	r0, r0, #0
+  62 0012 18BF     		it	ne
+  63 0014 0120     		movne	r0, #1
+  64              		.loc 1 36 19 view .LVU6
+  65 0016 604D     		ldr	r5, .L15+8
+  66 0018 2870     		strb	r0, [r5]
+  37:Core/Src/CustomWhile.c ****     diag_ProSW[1] = HAL_GPIO_ReadPin(SW2_GPIO_Port,SW2_Pin);
+  67              		.loc 1 37 5 is_stmt 1 view .LVU7
+  68              		.loc 1 37 21 is_stmt 0 view .LVU8
+  69 001a DFF8B481 		ldr	r8, .L15+64
+  70 001e 0421     		movs	r1, #4
+  71 0020 4046     		mov	r0, r8
+  72 0022 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+  73              	.LVL3:
+  74 0026 0038     		subs	r0, r0, #0
+  75 0028 18BF     		it	ne
+  76 002a 0120     		movne	r0, #1
+  77              		.loc 1 37 19 view .LVU9
+ARM GAS  C:\Temp\ccigjz0U.s 			page 3
+
+
+  78 002c 6870     		strb	r0, [r5, #1]
+  38:Core/Src/CustomWhile.c **** 
+  39:Core/Src/CustomWhile.c ****     diag_ProLED[0] = HAL_GPIO_ReadPin(LED0_GPIO_Port,LED0_Pin);
+  79              		.loc 1 39 5 is_stmt 1 view .LVU10
+  80              		.loc 1 39 22 is_stmt 0 view .LVU11
+  81 002e 5B4F     		ldr	r7, .L15+12
+  82 0030 4FF40051 		mov	r1, #8192
+  83 0034 3846     		mov	r0, r7
+  84 0036 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+  85              	.LVL4:
+  86 003a 0038     		subs	r0, r0, #0
+  87 003c 18BF     		it	ne
+  88 003e 0120     		movne	r0, #1
+  89              		.loc 1 39 20 view .LVU12
+  90 0040 574D     		ldr	r5, .L15+16
+  91 0042 2870     		strb	r0, [r5]
+  40:Core/Src/CustomWhile.c ****     diag_ProLED[1] = HAL_GPIO_ReadPin(LED1_GPIO_Port,LED1_Pin);
+  92              		.loc 1 40 5 is_stmt 1 view .LVU13
+  93              		.loc 1 40 22 is_stmt 0 view .LVU14
+  94 0044 4FF48041 		mov	r1, #16384
+  95 0048 3846     		mov	r0, r7
+  96 004a FFF7FEFF 		bl	HAL_GPIO_ReadPin
+  97              	.LVL5:
+  98 004e 0038     		subs	r0, r0, #0
+  99 0050 18BF     		it	ne
+ 100 0052 0120     		movne	r0, #1
+ 101              		.loc 1 40 20 view .LVU15
+ 102 0054 6870     		strb	r0, [r5, #1]
+  41:Core/Src/CustomWhile.c ****     diag_ProLED[2] = HAL_GPIO_ReadPin(LED2_GPIO_Port,LED2_Pin);
+ 103              		.loc 1 41 5 is_stmt 1 view .LVU16
+ 104              		.loc 1 41 22 is_stmt 0 view .LVU17
+ 105 0056 4FF40041 		mov	r1, #32768
+ 106 005a 3846     		mov	r0, r7
+ 107 005c FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 108              	.LVL6:
+ 109 0060 0038     		subs	r0, r0, #0
+ 110 0062 18BF     		it	ne
+ 111 0064 0120     		movne	r0, #1
+ 112              		.loc 1 41 20 view .LVU18
+ 113 0066 A870     		strb	r0, [r5, #2]
+  42:Core/Src/CustomWhile.c **** 
+  43:Core/Src/CustomWhile.c ****     diag_IR_LEDs[0] = HAL_GPIO_ReadPin(LED_MOT_LS_GPIO_Port,LED_MOT_LS_Pin);
+ 114              		.loc 1 43 5 is_stmt 1 view .LVU19
+ 115              		.loc 1 43 23 is_stmt 0 view .LVU20
+ 116 0068 4FF48051 		mov	r1, #4096
+ 117 006c 4046     		mov	r0, r8
+ 118 006e FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 119              	.LVL7:
+ 120 0072 0038     		subs	r0, r0, #0
+ 121 0074 18BF     		it	ne
+ 122 0076 0120     		movne	r0, #1
+ 123              		.loc 1 43 21 view .LVU21
+ 124 0078 4A4D     		ldr	r5, .L15+20
+ 125 007a 2870     		strb	r0, [r5]
+  44:Core/Src/CustomWhile.c ****     diag_IR_LEDs[1] = HAL_GPIO_ReadPin(LED_FWD_LS_GPIO_Port,LED_FWD_LS_Pin);
+ 126              		.loc 1 44 5 is_stmt 1 view .LVU22
+ 127              		.loc 1 44 23 is_stmt 0 view .LVU23
+ARM GAS  C:\Temp\ccigjz0U.s 			page 4
+
+
+ 128 007c 4FF48061 		mov	r1, #1024
+ 129 0080 3046     		mov	r0, r6
+ 130 0082 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 131              	.LVL8:
+ 132 0086 0038     		subs	r0, r0, #0
+ 133 0088 18BF     		it	ne
+ 134 008a 0120     		movne	r0, #1
+ 135              		.loc 1 44 21 view .LVU24
+ 136 008c 6870     		strb	r0, [r5, #1]
+  45:Core/Src/CustomWhile.c ****     diag_IR_LEDs[2] = HAL_GPIO_ReadPin(LED_LEFT_GPIO_Port,LED_LEFT_Pin);
+ 137              		.loc 1 45 5 is_stmt 1 view .LVU25
+ 138              		.loc 1 45 23 is_stmt 0 view .LVU26
+ 139 008e 4FF40071 		mov	r1, #512
+ 140 0092 3046     		mov	r0, r6
+ 141 0094 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 142              	.LVL9:
+ 143 0098 0038     		subs	r0, r0, #0
+ 144 009a 18BF     		it	ne
+ 145 009c 0120     		movne	r0, #1
+ 146              		.loc 1 45 21 view .LVU27
+ 147 009e A870     		strb	r0, [r5, #2]
+  46:Core/Src/CustomWhile.c ****     diag_IR_LEDs[3] = HAL_GPIO_ReadPin(LED_RIGHT_GPIO_Port,LED_RIGHT_Pin);
+ 148              		.loc 1 46 5 is_stmt 1 view .LVU28
+ 149              		.loc 1 46 23 is_stmt 0 view .LVU29
+ 150 00a0 4FF40061 		mov	r1, #2048
+ 151 00a4 3046     		mov	r0, r6
+ 152 00a6 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 153              	.LVL10:
+ 154 00aa 0038     		subs	r0, r0, #0
+ 155 00ac 18BF     		it	ne
+ 156 00ae 0120     		movne	r0, #1
+ 157              		.loc 1 46 21 view .LVU30
+ 158 00b0 E870     		strb	r0, [r5, #3]
+  47:Core/Src/CustomWhile.c ****     diag_IR_LEDs[4] = HAL_GPIO_ReadPin(LED_FWD_RS_GPIO_Port,LED_FWD_RS_Pin);
+ 159              		.loc 1 47 5 is_stmt 1 view .LVU31
+ 160              		.loc 1 47 23 is_stmt 0 view .LVU32
+ 161 00b2 4FF40051 		mov	r1, #8192
+ 162 00b6 3046     		mov	r0, r6
+ 163 00b8 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 164              	.LVL11:
+ 165 00bc 0038     		subs	r0, r0, #0
+ 166 00be 18BF     		it	ne
+ 167 00c0 0120     		movne	r0, #1
+ 168              		.loc 1 47 21 view .LVU33
+ 169 00c2 2871     		strb	r0, [r5, #4]
+  48:Core/Src/CustomWhile.c ****     diag_IR_LEDs[5] = HAL_GPIO_ReadPin(LED_MOT_RS_GPIO_Port,LED_MOT_RS_Pin);
+ 170              		.loc 1 48 5 is_stmt 1 view .LVU34
+ 171              		.loc 1 48 23 is_stmt 0 view .LVU35
+ 172 00c4 0221     		movs	r1, #2
+ 173 00c6 3046     		mov	r0, r6
+ 174 00c8 FFF7FEFF 		bl	HAL_GPIO_ReadPin
+ 175              	.LVL12:
+ 176 00cc 0038     		subs	r0, r0, #0
+ 177 00ce 18BF     		it	ne
+ 178 00d0 0120     		movne	r0, #1
+ 179              		.loc 1 48 21 view .LVU36
+ 180 00d2 6871     		strb	r0, [r5, #5]
+ARM GAS  C:\Temp\ccigjz0U.s 			page 5
+
+
+  49:Core/Src/CustomWhile.c ****   
+  50:Core/Src/CustomWhile.c ****     
+  51:Core/Src/CustomWhile.c ****         //  if (diag_IR_LEDs[0] == 1){ADC_H[6] = ADC[6]; }else{ADC_L[6] = ADC[6]; }  //IR_LED_MOT_L
+  52:Core/Src/CustomWhile.c ****         //  if (diag_IR_LEDs[1] == 1){ADC_H[7] = ADC[7]; }else{ADC_L[7] = ADC[7]; }  //IR_LED_FWD_L
+  53:Core/Src/CustomWhile.c ****         //  if (diag_IR_LEDs[2] == 1){ADC_H[4] = ADC[4]; }else{ADC_L[4] = ADC[4]; }  //IR_LED_LS
+  54:Core/Src/CustomWhile.c ****         //  if (diag_IR_LEDs[3] == 1){ADC_H[3] = ADC[3]; }else{ADC_L[3] = ADC[3]; }  //IR_LED_RS
+  55:Core/Src/CustomWhile.c ****         //  if (diag_IR_LEDs[4] == 1){ADC_H[0] = ADC[0]; }else{ADC_L[0] = ADC[0]; }  //IR_LED_FWD_R
+  56:Core/Src/CustomWhile.c ****         //  if (diag_IR_LEDs[5] == 1){ADC_H[1] = ADC[1]; }else{ADC_L[1] = ADC[1]; }  //IR_LED_MOT_R
+  57:Core/Src/CustomWhile.c **** 
+  58:Core/Src/CustomWhile.c **** 
+  59:Core/Src/CustomWhile.c **** 
+  60:Core/Src/CustomWhile.c ****     // ADC_H[2] = ADC[2];
+  61:Core/Src/CustomWhile.c ****     // ADC_L[2] = ADC[2];
+  62:Core/Src/CustomWhile.c ****     // ADC_H[5] = ADC[5];
+  63:Core/Src/CustomWhile.c ****     // ADC_L[5] = ADC[5]; 
+  64:Core/Src/CustomWhile.c ****     // ADC_H[8] = ADC[8];
+  65:Core/Src/CustomWhile.c ****     // ADC_L[8] = ADC[8]; 
+  66:Core/Src/CustomWhile.c ****     
+  67:Core/Src/CustomWhile.c **** 
+  68:Core/Src/CustomWhile.c ****     diag_MOT_R[0] = TIM3 -> CCR1;
+ 181              		.loc 1 68 5 is_stmt 1 view .LVU37
+ 182              		.loc 1 68 26 is_stmt 0 view .LVU38
+ 183 00d4 344B     		ldr	r3, .L15+24
+ 184 00d6 596B     		ldr	r1, [r3, #52]
+ 185              		.loc 1 68 19 view .LVU39
+ 186 00d8 344A     		ldr	r2, .L15+28
+ 187 00da 1180     		strh	r1, [r2]	@ movhi
+  69:Core/Src/CustomWhile.c ****     diag_MOT_R[1] = TIM3 -> CCR2;
+ 188              		.loc 1 69 5 is_stmt 1 view .LVU40
+ 189              		.loc 1 69 26 is_stmt 0 view .LVU41
+ 190 00dc 996B     		ldr	r1, [r3, #56]
+ 191              		.loc 1 69 19 view .LVU42
+ 192 00de 5180     		strh	r1, [r2, #2]	@ movhi
+  70:Core/Src/CustomWhile.c ****     diag_MOT_L[0] = TIM3 -> CCR3;
+ 193              		.loc 1 70 5 is_stmt 1 view .LVU43
+ 194              		.loc 1 70 26 is_stmt 0 view .LVU44
+ 195 00e0 D96B     		ldr	r1, [r3, #60]
+ 196              		.loc 1 70 19 view .LVU45
+ 197 00e2 334A     		ldr	r2, .L15+32
+ 198 00e4 1180     		strh	r1, [r2]	@ movhi
+  71:Core/Src/CustomWhile.c ****     diag_MOT_L[1] = TIM3 -> CCR4;
+ 199              		.loc 1 71 5 is_stmt 1 view .LVU46
+ 200              		.loc 1 71 26 is_stmt 0 view .LVU47
+ 201 00e6 1B6C     		ldr	r3, [r3, #64]
+ 202              		.loc 1 71 19 view .LVU48
+ 203 00e8 5380     		strh	r3, [r2, #2]	@ movhi
+  72:Core/Src/CustomWhile.c **** 
+  73:Core/Src/CustomWhile.c **** 
+  74:Core/Src/CustomWhile.c ****     CDC_Transmit_FS(header,3);
+ 204              		.loc 1 74 5 is_stmt 1 view .LVU49
+ 205 00ea 0321     		movs	r1, #3
+ 206 00ec 3148     		ldr	r0, .L15+36
+ 207 00ee 80B2     		uxth	r0, r0
+ 208 00f0 FFF7FEFF 		bl	CDC_Transmit_FS
+ 209              	.LVL13:
+  75:Core/Src/CustomWhile.c **** 
+  76:Core/Src/CustomWhile.c **** 
+ARM GAS  C:\Temp\ccigjz0U.s 			page 6
+
+
+  77:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&diag_ProSW ,1*2) != USBD_OK){}
+ 210              		.loc 1 77 5 view .LVU50
+ 211              	.L2:
+ 212              		.loc 1 77 58 discriminator 1 view .LVU51
+ 213              		.loc 1 77 46 discriminator 1 view .LVU52
+ 214              		.loc 1 77 12 is_stmt 0 discriminator 1 view .LVU53
+ 215 00f4 0221     		movs	r1, #2
+ 216 00f6 2848     		ldr	r0, .L15+8
+ 217 00f8 FFF7FEFF 		bl	CDC_Transmit_FS
+ 218              	.LVL14:
+ 219              		.loc 1 77 46 discriminator 1 view .LVU54
+ 220 00fc 0028     		cmp	r0, #0
+ 221 00fe F9D1     		bne	.L2
+ 222              	.L3:
+  78:Core/Src/CustomWhile.c **** 
+  79:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&diag_ProLED ,1*3) != USBD_OK){}
+ 223              		.loc 1 79 59 is_stmt 1 discriminator 1 view .LVU55
+ 224              		.loc 1 79 47 discriminator 1 view .LVU56
+ 225              		.loc 1 79 12 is_stmt 0 discriminator 1 view .LVU57
+ 226 0100 0321     		movs	r1, #3
+ 227 0102 2748     		ldr	r0, .L15+16
+ 228 0104 FFF7FEFF 		bl	CDC_Transmit_FS
+ 229              	.LVL15:
+ 230              		.loc 1 79 47 discriminator 1 view .LVU58
+ 231 0108 0028     		cmp	r0, #0
+ 232 010a F9D1     		bne	.L3
+ 233              	.L4:
+  80:Core/Src/CustomWhile.c **** 
+  81:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&IMU_Accel, 4*3) != USBD_OK){}
+ 234              		.loc 1 81 57 is_stmt 1 discriminator 1 view .LVU59
+ 235              		.loc 1 81 45 discriminator 1 view .LVU60
+ 236              		.loc 1 81 12 is_stmt 0 discriminator 1 view .LVU61
+ 237 010c 0C21     		movs	r1, #12
+ 238 010e 2A48     		ldr	r0, .L15+40
+ 239 0110 FFF7FEFF 		bl	CDC_Transmit_FS
+ 240              	.LVL16:
+ 241              		.loc 1 81 45 discriminator 1 view .LVU62
+ 242 0114 0028     		cmp	r0, #0
+ 243 0116 F9D1     		bne	.L4
+ 244              	.L5:
+  82:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&IMU_Gyro , 4*3) != USBD_OK){}
+ 245              		.loc 1 82 57 is_stmt 1 discriminator 1 view .LVU63
+ 246              		.loc 1 82 45 discriminator 1 view .LVU64
+ 247              		.loc 1 82 12 is_stmt 0 discriminator 1 view .LVU65
+ 248 0118 0C21     		movs	r1, #12
+ 249 011a 2848     		ldr	r0, .L15+44
+ 250 011c FFF7FEFF 		bl	CDC_Transmit_FS
+ 251              	.LVL17:
+ 252              		.loc 1 82 45 discriminator 1 view .LVU66
+ 253 0120 0028     		cmp	r0, #0
+ 254 0122 F9D1     		bne	.L5
+ 255              	.L6:
+  83:Core/Src/CustomWhile.c **** 
+  84:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&ADC1s, 2*9) != USBD_OK){}
+ 256              		.loc 1 84 53 is_stmt 1 discriminator 1 view .LVU67
+ 257              		.loc 1 84 41 discriminator 1 view .LVU68
+ 258              		.loc 1 84 12 is_stmt 0 discriminator 1 view .LVU69
+ARM GAS  C:\Temp\ccigjz0U.s 			page 7
+
+
+ 259 0124 1221     		movs	r1, #18
+ 260 0126 2648     		ldr	r0, .L15+48
+ 261 0128 FFF7FEFF 		bl	CDC_Transmit_FS
+ 262              	.LVL18:
+ 263              		.loc 1 84 41 discriminator 1 view .LVU70
+ 264 012c 0028     		cmp	r0, #0
+ 265 012e F9D1     		bne	.L6
+ 266              	.L7:
+  85:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&ADC2s, 2*9) != USBD_OK){}
+ 267              		.loc 1 85 53 is_stmt 1 discriminator 1 view .LVU71
+ 268              		.loc 1 85 41 discriminator 1 view .LVU72
+ 269              		.loc 1 85 12 is_stmt 0 discriminator 1 view .LVU73
+ 270 0130 1221     		movs	r1, #18
+ 271 0132 2448     		ldr	r0, .L15+52
+ 272 0134 FFF7FEFF 		bl	CDC_Transmit_FS
+ 273              	.LVL19:
+ 274              		.loc 1 85 41 discriminator 1 view .LVU74
+ 275 0138 0028     		cmp	r0, #0
+ 276 013a F9D1     		bne	.L7
+ 277              	.L8:
+  86:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&ADC_L, 2*9) != USBD_OK){}
+ 278              		.loc 1 86 53 is_stmt 1 discriminator 1 view .LVU75
+ 279              		.loc 1 86 41 discriminator 1 view .LVU76
+ 280              		.loc 1 86 12 is_stmt 0 discriminator 1 view .LVU77
+ 281 013c 1221     		movs	r1, #18
+ 282 013e 2248     		ldr	r0, .L15+56
+ 283 0140 FFF7FEFF 		bl	CDC_Transmit_FS
+ 284              	.LVL20:
+ 285              		.loc 1 86 41 discriminator 1 view .LVU78
+ 286 0144 0028     		cmp	r0, #0
+ 287 0146 F9D1     		bne	.L8
+ 288              	.L9:
+  87:Core/Src/CustomWhile.c **** 
+  88:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&diag_IR_LEDs, 6) != USBD_OK){}
+ 289              		.loc 1 88 58 is_stmt 1 discriminator 1 view .LVU79
+ 290              		.loc 1 88 46 discriminator 1 view .LVU80
+ 291              		.loc 1 88 12 is_stmt 0 discriminator 1 view .LVU81
+ 292 0148 0621     		movs	r1, #6
+ 293 014a 1648     		ldr	r0, .L15+20
+ 294 014c FFF7FEFF 		bl	CDC_Transmit_FS
+ 295              	.LVL21:
+ 296              		.loc 1 88 46 discriminator 1 view .LVU82
+ 297 0150 0028     		cmp	r0, #0
+ 298 0152 F9D1     		bne	.L9
+ 299              	.L10:
+  89:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&IR_LED_TIMER, 4) != USBD_OK){}
+ 300              		.loc 1 89 58 is_stmt 1 discriminator 1 view .LVU83
+ 301              		.loc 1 89 46 discriminator 1 view .LVU84
+ 302              		.loc 1 89 12 is_stmt 0 discriminator 1 view .LVU85
+ 303 0154 0421     		movs	r1, #4
+ 304 0156 1D48     		ldr	r0, .L15+60
+ 305 0158 FFF7FEFF 		bl	CDC_Transmit_FS
+ 306              	.LVL22:
+ 307              		.loc 1 89 46 discriminator 1 view .LVU86
+ 308 015c 0028     		cmp	r0, #0
+ 309 015e F9D1     		bne	.L10
+ 310              	.L11:
+ARM GAS  C:\Temp\ccigjz0U.s 			page 8
+
+
+  90:Core/Src/CustomWhile.c **** 
+  91:Core/Src/CustomWhile.c **** 
+  92:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&diag_MOT_L, 2*2) != USBD_OK){}
+ 311              		.loc 1 92 58 is_stmt 1 discriminator 1 view .LVU87
+ 312              		.loc 1 92 46 discriminator 1 view .LVU88
+ 313              		.loc 1 92 12 is_stmt 0 discriminator 1 view .LVU89
+ 314 0160 0421     		movs	r1, #4
+ 315 0162 1348     		ldr	r0, .L15+32
+ 316 0164 FFF7FEFF 		bl	CDC_Transmit_FS
+ 317              	.LVL23:
+ 318              		.loc 1 92 46 discriminator 1 view .LVU90
+ 319 0168 0028     		cmp	r0, #0
+ 320 016a F9D1     		bne	.L11
+ 321              	.L12:
+  93:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(&diag_MOT_R, 2*2) != USBD_OK){}
+ 322              		.loc 1 93 58 is_stmt 1 discriminator 1 view .LVU91
+ 323              		.loc 1 93 46 discriminator 1 view .LVU92
+ 324              		.loc 1 93 12 is_stmt 0 discriminator 1 view .LVU93
+ 325 016c 0421     		movs	r1, #4
+ 326 016e 0F48     		ldr	r0, .L15+28
+ 327 0170 FFF7FEFF 		bl	CDC_Transmit_FS
+ 328              	.LVL24:
+ 329              		.loc 1 93 46 discriminator 1 view .LVU94
+ 330 0174 0028     		cmp	r0, #0
+ 331 0176 F9D1     		bne	.L12
+ 332              	.L13:
+  94:Core/Src/CustomWhile.c **** 
+  95:Core/Src/CustomWhile.c **** 
+  96:Core/Src/CustomWhile.c **** 
+  97:Core/Src/CustomWhile.c **** 
+  98:Core/Src/CustomWhile.c ****     while( CDC_Transmit_FS(terminator,4) != USBD_OK){}
+ 333              		.loc 1 98 54 is_stmt 1 discriminator 1 view .LVU95
+ 334              		.loc 1 98 42 discriminator 1 view .LVU96
+ 335              		.loc 1 98 12 is_stmt 0 discriminator 1 view .LVU97
+ 336 0178 0421     		movs	r1, #4
+ 337 017a A0B2     		uxth	r0, r4
+ 338 017c FFF7FEFF 		bl	CDC_Transmit_FS
+ 339              	.LVL25:
+ 340              		.loc 1 98 42 discriminator 1 view .LVU98
+ 341 0180 0028     		cmp	r0, #0
+ 342 0182 F9D1     		bne	.L13
+  99:Core/Src/CustomWhile.c ****     HAL_Delay(20);
+ 343              		.loc 1 99 5 is_stmt 1 view .LVU99
+ 344 0184 1420     		movs	r0, #20
+ 345 0186 FFF7FEFF 		bl	HAL_Delay
+ 346              	.LVL26:
+ 100:Core/Src/CustomWhile.c **** } ...
+ 347              		.loc 1 100 1 is_stmt 0 view .LVU100
+ 348 018a BDE8F081 		pop	{r4, r5, r6, r7, r8, pc}
+ 349              	.L16:
+ 350 018e 00BF     		.align	2
+ 351              	.L15:
+ 352 0190 04000000 		.word	.LC1
+ 353 0194 00100048 		.word	1207963648
+ 354 0198 00000000 		.word	diag_ProSW
+ 355 019c 00080048 		.word	1207961600
+ 356 01a0 00000000 		.word	diag_ProLED
+ARM GAS  C:\Temp\ccigjz0U.s 			page 9
+
+
+ 357 01a4 00000000 		.word	diag_IR_LEDs
+ 358 01a8 00040040 		.word	1073742848
+ 359 01ac 00000000 		.word	diag_MOT_R
+ 360 01b0 00000000 		.word	diag_MOT_L
+ 361 01b4 00000000 		.word	.LC0
+ 362 01b8 00000000 		.word	IMU_Accel
+ 363 01bc 00000000 		.word	IMU_Gyro
+ 364 01c0 00000000 		.word	ADC1s
+ 365 01c4 00000000 		.word	ADC2s
+ 366 01c8 00000000 		.word	ADC_L
+ 367 01cc 00000000 		.word	IR_LED_TIMER
+ 368 01d0 00040048 		.word	1207960576
+ 369              		.cfi_endproc
+ 370              	.LFE909:
+ 372              		.global	diag_MOT_R
+ 373              		.section	.bss.diag_MOT_R,"aw",%nobits
+ 374              		.align	2
+ 377              	diag_MOT_R:
+ 378 0000 00000000 		.space	4
+ 379              		.global	diag_MOT_L
+ 380              		.section	.bss.diag_MOT_L,"aw",%nobits
+ 381              		.align	2
+ 384              	diag_MOT_L:
+ 385 0000 00000000 		.space	4
+ 386              		.global	ADC_L
+ 387              		.section	.bss.ADC_L,"aw",%nobits
+ 388              		.align	2
+ 391              	ADC_L:
+ 392 0000 00000000 		.space	18
+ 392      00000000 
+ 392      00000000 
+ 392      00000000 
+ 392      0000
+ 393              		.global	ADC_H
+ 394              		.section	.bss.ADC_H,"aw",%nobits
+ 395              		.align	2
+ 398              	ADC_H:
+ 399 0000 00000000 		.space	18
+ 399      00000000 
+ 399      00000000 
+ 399      00000000 
+ 399      0000
+ 400              		.global	diag_IR_LEDs
+ 401              		.section	.bss.diag_IR_LEDs,"aw",%nobits
+ 402              		.align	2
+ 405              	diag_IR_LEDs:
+ 406 0000 00000000 		.space	6
+ 406      0000
+ 407              		.global	diag_ProLED
+ 408              		.section	.bss.diag_ProLED,"aw",%nobits
+ 409              		.align	2
+ 412              	diag_ProLED:
+ 413 0000 000000   		.space	3
+ 414              		.global	diag_ProSW
+ 415              		.section	.bss.diag_ProSW,"aw",%nobits
+ 416              		.align	2
+ 419              	diag_ProSW:
+ARM GAS  C:\Temp\ccigjz0U.s 			page 10
+
+
+ 420 0000 0000     		.space	2
+ 421              		.text
+ 422              	.Letext0:
+ 423              		.file 2 "c:\\users\\jessejabezarendse\\appdata\\roaming\\code\\user\\globalstorage\\bmd.stm32-for-
+ 424              		.file 3 "c:\\users\\jessejabezarendse\\appdata\\roaming\\code\\user\\globalstorage\\bmd.stm32-for-
+ 425              		.file 4 "Drivers/CMSIS/Device/ST/STM32L4xx/Include/stm32l476xx.h"
+ 426              		.file 5 "Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_gpio.h"
+ 427              		.file 6 "Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h"
+ 428              		.file 7 "Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h"
+ 429              		.file 8 "Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_ll_dma.h"
+ARM GAS  C:\Temp\ccigjz0U.s 			page 11
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 CustomWhile.c
+  C:\Temp\ccigjz0U.s:21     .rodata.CustomWhile.str1.4:00000000 $d
+  C:\Temp\ccigjz0U.s:28     .text.CustomWhile:00000000 $t
+  C:\Temp\ccigjz0U.s:34     .text.CustomWhile:00000000 CustomWhile
+  C:\Temp\ccigjz0U.s:352    .text.CustomWhile:00000190 $d
+  C:\Temp\ccigjz0U.s:419    .bss.diag_ProSW:00000000 diag_ProSW
+  C:\Temp\ccigjz0U.s:412    .bss.diag_ProLED:00000000 diag_ProLED
+  C:\Temp\ccigjz0U.s:405    .bss.diag_IR_LEDs:00000000 diag_IR_LEDs
+  C:\Temp\ccigjz0U.s:377    .bss.diag_MOT_R:00000000 diag_MOT_R
+  C:\Temp\ccigjz0U.s:384    .bss.diag_MOT_L:00000000 diag_MOT_L
+  C:\Temp\ccigjz0U.s:391    .bss.ADC_L:00000000 ADC_L
+  C:\Temp\ccigjz0U.s:374    .bss.diag_MOT_R:00000000 $d
+  C:\Temp\ccigjz0U.s:381    .bss.diag_MOT_L:00000000 $d
+  C:\Temp\ccigjz0U.s:388    .bss.ADC_L:00000000 $d
+  C:\Temp\ccigjz0U.s:398    .bss.ADC_H:00000000 ADC_H
+  C:\Temp\ccigjz0U.s:395    .bss.ADC_H:00000000 $d
+  C:\Temp\ccigjz0U.s:402    .bss.diag_IR_LEDs:00000000 $d
+  C:\Temp\ccigjz0U.s:409    .bss.diag_ProLED:00000000 $d
+  C:\Temp\ccigjz0U.s:416    .bss.diag_ProSW:00000000 $d
+
+UNDEFINED SYMBOLS
+HAL_GPIO_ReadPin
+CDC_Transmit_FS
+HAL_Delay
+IMU_Accel
+IMU_Gyro
+ADC1s
+ADC2s
+IR_LED_TIMER

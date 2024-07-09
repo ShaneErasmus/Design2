@@ -1,0 +1,2 @@
+startup_stm32l476vetx.o: \
+ C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseProgramming/STM32CubeIDE/Application/User/Startup/startup_stm32l476vetx.s

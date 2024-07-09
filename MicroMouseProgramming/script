@@ -1,0 +1,10 @@
+config load "C:\Users\JesseJabezArendse\Desktop\3099_VACWORK\MicroMouseProgramming\MicroMouseProgramming.ioc"
+project toolchain STM32CubeIDE
+
+SetStructure Advanced
+
+project setCustomFWPath "C:\MATLAB\R2022a\stm_firmware\STM32Cube_FW_L4_V1.18.0"
+
+project generate 
+
+exit wait

@@ -1,0 +1,14 @@
+rt_nonfinite.o: \
+ C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rt_nonfinite.c \
+ C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rtGetNaN.h \
+ C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rt_nonfinite.h \
+ C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rtwtypes.h \
+ C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rtGetInf.h
+
+C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rtGetNaN.h:
+
+C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rt_nonfinite.h:
+
+C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rtwtypes.h:
+
+C:/Users/JesseJabezArendse/Desktop/3099_VACWORK/MicroMouseTemplate_ert_rtw/rtGetInf.h:
