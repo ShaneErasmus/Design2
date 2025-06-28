@@ -1,0 +1,14 @@
+.vscode/
+slprj/
+*.slxc
+debug.log
+*.slx.r2023a
+MicroMouseProgramming_Code/build/*
+!MicroMouseProgramming_Code/build/release/MicroMouseProgramming.bin
+!MicroMouseProgramming_Code/build/debug/MicroMouseProgramming.bin
+*instrumented/
+
+MicroMouse_Deploy.bin
+MicroMouse_Deploy.elf
+MicroMouse_Deploy.hex
+MicroMouse_Deploy_ert_rtw/
