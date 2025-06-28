@@ -8,3 +8,7 @@ MicroMouseProgramming_Code/build/*
 !MicroMouseProgramming_Code/build/debug/MicroMouseProgramming.bin
 *instrumented/
 
+MicroMouse_Deploy.bin
+MicroMouse_Deploy.elf
+MicroMouse_Deploy.hex
+MicroMouse_Deploy_ert_rtw/
