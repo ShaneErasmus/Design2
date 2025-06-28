@@ -1,4 +1,18 @@
 ﻿# MicroMouseTemplate
 
-# Run runMeFirst.m to setup some parameters
-# Open MicroMouseTemplate.slx for programming, Hardware > Build, Deploy and Start
+MAKE SURE YOU CLONE THE WHOLE REPOSITORY
+
+## For students:
+Use [`StudentTemplate.slx`](./StudentTemplate.slx) as a clean starting point for your own implementation.  
+→ Build on this file when creating your own solution.
+
+## For programming the MicroMouse:
+Use [`MicroMouse_Deploy.slx`](./MicroMouse_Deploy.slx)  
+→ Go to **Hardware > Build, Deploy and Start**
+
+## To skip the long build times and run directly from your machine for an unlocked and faster experience:
+Use [`MicroMouse_RapidDevelopment.slx`](./MicroMouse_RapidDevelopment.slx)  
+→ Go to **Simulation > Run**
+
+## For developing with C Code: (By choice or Mac users)
+Open the [`MicroMouseProgramming_Code`](./MicroMouseProgramming_Code) directory as an STM32 Project in VS Code or STM32CubeIDE.
