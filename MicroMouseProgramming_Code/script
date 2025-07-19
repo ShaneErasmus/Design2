@@ -1,4 +1,4 @@
-config load "C:\Users\JesseJabezArendse\Documents\MicroMouseTemplate\MicroMouseProgramming_Code\MicroMouseProgramming.ioc"
+config load "C:\Users\JesseJabezArendse\Desktop\MicroMouseTemplate\MicroMouseProgramming_Code\MicroMouseProgramming.ioc"
 project toolchain STM32CubeIDE
 
 SetStructure Advanced
