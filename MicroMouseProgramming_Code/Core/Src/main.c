@@ -33,7 +33,7 @@
 #include "ADCs.h"
 #include "LEDs.h"
 #include "Buttons.h"
-
+#include "INA219.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +55,7 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
 DMA_HandleTypeDef hdma_i2c2_rx;
 DMA_HandleTypeDef hdma_i2c2_tx;
@@ -75,6 +76,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -122,6 +124,10 @@ extern char oled_string5[18];
 
 extern uint8_t LED[3];
 extern uint8_t SW[2];
+
+extern uint8_t batteryLife;
+extern int16_t Vbattery, Vshunt, Current, config, Power;
+extern float miliwattAVG,miliWattTime,totalPowerUsed;
 
 uint8_t readyToGetToF = 0;
 
@@ -202,7 +208,12 @@ void sendToSimulink(){
     HAL_UART_Transmit(&huart1,  &(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
     HAL_UART_Transmit(&huart1,  &(ADCs[4]  )  , 2 , HAL_MAX_DELAY);
 
-
+    // INA219
+    HAL_UART_Transmit(&huart1, (uint8_t *) &Vbattery     ,2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *) &Vshunt       ,2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *) &Current      ,2 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *) &Power        ,2 , HAL_MAX_DELAY); 
+    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
 
     HAL_UART_Transmit(&huart1, (uint32_t *) &counter         ,4 , HAL_MAX_DELAY);
     // HAL_UART_Transmit(&huart1, (uint8_t *) "A_J"      ,3 , HAL_MAX_DELAY);
@@ -259,7 +270,19 @@ void updateMicroMouse(){
   refreshSWValues();
   refreshTOFValues();
   refreshIMUValues();
+  refreshINA219Values();
+}
 
+uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAddresses) {
+    uint8_t found = 0;
+    for (uint8_t addr = 1; addr < 128; addr++) {
+        if (HAL_I2C_IsDeviceReady(hi2c, addr << 1, 1, 10) == HAL_OK) {
+            if (found < maxAddresses) {
+                foundAddresses[found++] = addr;
+            }
+        }
+    }
+    return found;
 }
 
 #ifndef COMPILED_BY_SIMULINK
@@ -283,6 +306,7 @@ void main(void)
   MX_DMA_Init();
   MX_GPIO_Init();
   MX_ADC1_Init();
+  MX_I2C1_Init();
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
@@ -291,14 +315,23 @@ void main(void)
   MX_TIM6_Init();
   MX_USART1_UART_Init();
 
-  // Initialize IMU
-  initIMU();
-
   // Initialize TOF
   initTOFs(1);
 
+  // Scan both I2C buses for devices
+  uint8_t found1[1];
+  uint8_t found2[5];
+  uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
+  uint8_t num2 = I2C_Scan(&hi2c2, found2, 5);
+
   // Initialize OLED
   initScreen();
+
+  // Initialize INA219
+  initINA219();
+
+  // Initialize IMU
+  initIMU();
 
   initADCs();
 
@@ -493,6 +526,58 @@ void MX_ADC1_Init(void)
 }
 
 /**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x00B10E24;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** I2C Fast mode Plus enable
+  */
+  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C1);
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
   * @brief I2C2 Initialization Function
   * @param None
   * @retval None
@@ -508,7 +593,7 @@ void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00F12981;
+  hi2c2.Init.Timing = 0x00B10E24;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -534,6 +619,10 @@ void MX_I2C2_Init(void)
   {
     Error_Handler();
   }
+
+  /** I2C Fast mode Plus enable
+  */
+  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C2);
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
@@ -1046,5 +1135,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/*SimulinkGeneratedCode*/
