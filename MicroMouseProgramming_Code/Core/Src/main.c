@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -76,7 +78,6 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -214,6 +215,11 @@ void sendToSimulink(){
     HAL_UART_Transmit(&huart1, (uint8_t *) &Current      ,2 , HAL_MAX_DELAY);
     HAL_UART_Transmit(&huart1, (uint8_t *) &Power        ,2 , HAL_MAX_DELAY); 
     HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart1, (uint8_t *) &batteryLife  ,1 , HAL_MAX_DELAY);
+
+
 
     HAL_UART_Transmit(&huart1, (uint32_t *) &counter         ,4 , HAL_MAX_DELAY);
     // HAL_UART_Transmit(&huart1, (uint8_t *) "A_J"      ,3 , HAL_MAX_DELAY);
@@ -245,6 +251,80 @@ void recievedFromSimulink(){
 
 }
 
+uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAddresses) {
+    uint8_t found = 0;
+    for (uint8_t addr = 1; addr < 128; addr++) {
+        if (HAL_I2C_IsDeviceReady(hi2c, addr << 1, 1, 10) == HAL_OK) {
+            if (found < maxAddresses) {
+                foundAddresses[found++] = addr;
+            }
+        }
+    }
+    return found;
+}
+
+
+BYTE work[4096];
+void initUSB(){
+  FRESULT res = f_mkfs("0:", FM_FAT32 | FM_SFD, 0, work, sizeof(work));
+}
+
+void refreshUSB(){
+  FatFS_routine();
+  logSelectedVariables();
+}
+
+void initMicroMouse(){
+  TIM3->CCR4 = 0;
+  TIM3->CCR3 = 0;
+  TIM4->CCR2 = 0;
+  TIM4->CCR1 = 0;
+
+  initTOFs(1);
+
+  // Scan both I2C buses for devices
+  uint8_t found1[1];
+  uint8_t found2[5];
+  uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
+  uint8_t num2 = I2C_Scan(&hi2c2, found2, 5);
+
+  initScreen();
+  initINA219();
+  initIMU();
+  initADCs();
+  initMotors();
+  initLEDs();
+  initSW();
+  initUSB();
+}
+
+void logSelectedVariables() {
+  FIL file;
+  UINT bytesWritten = 0;
+  char logLine[128];
+  FRESULT res;
+  snprintf(logLine, sizeof(logLine), "%ld,%d,%d,%d,%d,%d,%.3f,%.3f,%.3f,%.3f\r\n",
+    (long)counter,
+    (int)MOTOR_LS,
+    (int)MOTOR_RS,
+    (int)TOF_left_result.Distance,
+    (int)TOF_centre_result.Distance,
+    (int)TOF_right_result.Distance,
+    (IMU_Accel[0]),
+    (IMU_Accel[1]),
+    (IMU_Gyro[0]),
+    (IMU_Gyro[1])
+  );
+
+  if (f_open(&file, "STM32.txt", FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_READ | FA_WRITE) != FR_OK) return;
+  if (f_lseek(&file, f_size(&file)) != FR_OK) { f_close(&file); return; }
+  res = f_write(&file, logLine, strlen(logLine), &bytesWritten);
+  if ((bytesWritten > 0) && (res == FR_OK)) {
+    if (f_sync(&file) != FR_OK) { f_close(&file); return; }
+  } else { f_close(&file); return; }
+  f_close(&file);
+}
+
 void updateMicroMouse(){
   // Motor Control
   if (MOTOR_LS >= 0) {
@@ -271,18 +351,7 @@ void updateMicroMouse(){
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
-}
-
-uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAddresses) {
-    uint8_t found = 0;
-    for (uint8_t addr = 1; addr < 128; addr++) {
-        if (HAL_I2C_IsDeviceReady(hi2c, addr << 1, 1, 10) == HAL_OK) {
-            if (found < maxAddresses) {
-                foundAddresses[found++] = addr;
-            }
-        }
-    }
-    return found;
+  refreshUSB();
 }
 
 #ifndef COMPILED_BY_SIMULINK
@@ -314,32 +383,10 @@ void main(void)
   MX_TIM5_Init();
   MX_TIM6_Init();
   MX_USART1_UART_Init();
+  MX_USB_DEVICE_Init();
+  MX_FATFS_Init();
 
-  // Initialize TOF
-  initTOFs(1);
-
-  // Scan both I2C buses for devices
-  uint8_t found1[1];
-  uint8_t found2[5];
-  uint8_t num1 = I2C_Scan(&hi2c1, found1, 1);
-  uint8_t num2 = I2C_Scan(&hi2c2, found2, 5);
-
-  // Initialize OLED
-  initScreen();
-
-  // Initialize INA219
-  initINA219();
-
-  // Initialize IMU
-  initIMU();
-
-  initADCs();
-
-  initMotors();
-
-  initLEDs();
-
-  initSW();
+  initMicroMouse();
   
 
   // Configure timers for desired frequencies
@@ -530,7 +577,7 @@ void MX_ADC1_Init(void)
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
+void MX_I2C1_Init(void)
 {
 
   /* USER CODE BEGIN I2C1_Init 0 */
@@ -1029,6 +1076,14 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(CTRL_LEDS_GPIO_Port, CTRL_LEDS_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pins : PE2 PE4 PE5 PE7
+                           PE8 PE12 PE0 PE1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_7
+                          |GPIO_PIN_8|GPIO_PIN_12|GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
   /*Configure GPIO pins : XSHUT3_Pin XSHUT1_Pin XSHUT2_Pin */
   GPIO_InitStruct.Pin = XSHUT3_Pin|XSHUT1_Pin|XSHUT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1049,11 +1104,51 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PC0 PC1 PC2 PC3
+                           PC6 PC7 PC10 PC11
+                           PC12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3
+                          |GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_10|GPIO_PIN_11
+                          |GPIO_PIN_12;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA0 PA1 PA2 PA4
+                           PA5 PA6 PA7 PA8
+                           PA9 PA10 PA15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
+                          |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
+                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB1 PB12 PB13 PB14
+                           PB15 PB4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14
+                          |GPIO_PIN_15|GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pin : SW2_Pin */
   GPIO_InitStruct.Pin = SW2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(SW2_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PD8 PD9 PD10 PD11
+                           PD14 PD15 PD0 PD1
+                           PD2 PD3 PD4 PD5
+                           PD6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11
+                          |GPIO_PIN_14|GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1
+                          |GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5
+                          |GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MOTOR_EN_Pin */
   GPIO_InitStruct.Pin = MOTOR_EN_Pin;
@@ -1112,10 +1207,14 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
+  // __disable_irq();
+  // initMicroMouse();
+  // __enable_irq();
   while (1)
   {
+    /* code */
   }
+  
   /* USER CODE END Error_Handler_Debug */
 }
 

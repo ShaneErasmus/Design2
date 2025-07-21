@@ -503,19 +503,19 @@ void initTOFs(uint16_t signalRate){
   HAL_GPIO_WritePin(XSHUT1_GPIO_Port, XSHUT1_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT2_GPIO_Port, XSHUT2_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(XSHUT3_GPIO_Port, XSHUT3_Pin, GPIO_PIN_RESET);
-  HAL_Delay(200);
+  HAL_Delay(50);
 
   // enable power to the ToF sensors and set the new addresses and stuff
   HAL_GPIO_WritePin(XSHUT1_GPIO_Port, XSHUT1_Pin, GPIO_PIN_SET);
-  HAL_Delay(200);
+  HAL_Delay(50);
   initVL53L0(newToFAddress_L,signalRate);
 
   HAL_GPIO_WritePin(XSHUT2_GPIO_Port, XSHUT2_Pin, GPIO_PIN_SET);
-  HAL_Delay(200);
+  HAL_Delay(50);
   initVL53L0(newToFAddress_C,signalRate);
 
   HAL_GPIO_WritePin(XSHUT3_GPIO_Port, XSHUT3_Pin, GPIO_PIN_SET);
-  HAL_Delay(200);
+  HAL_Delay(50);
   initVL53L0(newToFAddress_R,signalRate);
 
   setTimeout(5);

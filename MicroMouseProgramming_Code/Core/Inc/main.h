@@ -63,6 +63,7 @@ void MX_TIM1_Init(void);
 void MX_TIM5_Init(void);
 void MX_TIM6_Init(void);
 void MX_ADC1_Init(void);
+void MX_I2C1_Init(void);
 
 /* USER CODE BEGIN EFP */
 

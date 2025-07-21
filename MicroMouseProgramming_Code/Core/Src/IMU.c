@@ -34,47 +34,47 @@ float accelDivisor = 16384.0f;
 float gyroDivisor = 131.0f;
 
 int16_t signNumber16(uint16_t unsignedValue){
-	int16_t signedValue;
+  int16_t signedValue;
 
-	if (unsignedValue <= INT16_MAX) {
+  if (unsignedValue <= INT16_MAX) {
         signedValue = (int16_t)unsignedValue; // No change needed, it fits in the signed range.
     } else {
         signedValue = -((int16_t)(UINT16_MAX - unsignedValue + 1));
     }
 
-	return signedValue;
+  return signedValue;
 }
 
 static void WriteMem(uint8_t devAddress, uint8_t RegisterAddress, uint16_t Value)
 {
-	uint8_t addr[2];
-	addr[0] = (Value >> 8) & 0xff;  // upper byte
-	addr[1] = (Value >> 0) & 0xff; // lower byte
-	HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, (uint8_t*)addr, 2, HAL_MAX_DELAY);
+  uint8_t addr[2];
+  addr[0] = (Value >> 8) & 0xff;  // upper byte
+  addr[1] = (Value >> 0) & 0xff; // lower byte
+  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, (uint8_t*)addr, 2, HAL_MAX_DELAY);
 }
 
 static uint16_t ReadMem(uint8_t devAddress, uint8_t RegisterAddress)
 {
-	uint8_t Value[2];
+  uint8_t Value[2];
 
-	HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 2, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 2, HAL_MAX_DELAY);
 
-	return ((Value[0] << 8) | Value[1]);
+  return ((Value[0] << 8) | Value[1]);
 }
 
 
 static void WriteByte(uint8_t devAddress, uint8_t RegisterAddress, uint8_t Value)
 {
-	HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, HAL_MAX_DELAY);
 }
 
 static uint16_t ReadByte(uint8_t devAddress, uint8_t RegisterAddress)
 {
-	uint8_t Value;
+  uint8_t Value;
 
-	HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, HAL_MAX_DELAY);
 
-	return Value;
+  return Value;
 }
 
 #ifdef IMU_MPU6050
@@ -328,12 +328,12 @@ void refreshIMUValues() {
 
 void initIMU() {
   // resetICM42605(); // Reset the ICM42605
-  initICM42605(AFS_2G, GFS_125DPS, AODR_1000Hz, GODR_1000Hz); // Initialize with ±2g and ±125°/s
+  initICM42605(AFS_2G, GFS_2000DPS, AODR_1000Hz, GODR_1000Hz); // Initialize with ±2g and ±125°/s
 }
 
 void calibrateIMU() {
     static uint8_t lastAccelConfig = AFS_2G; // Default ±2g
-    static uint8_t lastGyroConfig = GFS_125DPS; // Default ±125°/s
+    static uint8_t lastGyroConfig = GFS_2000DPS; // Default ±125°/s
 
     uint8_t accelConfig = lastAccelConfig;
     uint8_t gyroConfig = lastGyroConfig;
@@ -367,17 +367,33 @@ void calibrateIMU() {
         gyroMaxMag = (absGyro > gyroMaxMag) ? absGyro : gyroMaxMag;
     }
 
+
     // Dynamic adjustment of gyroscope FSR (values in radians/s)
-    if (gyroMaxMag >= 4.3633f && gyroMaxMag < 8.7266f) { // Near ±250°/s limit, switch to ±500°/s
+    if (gyroMaxMag >= 0.0165f && gyroMaxMag < 0.0329f) { // Near ±15.125°/s limit, switch to ±31.25°/s
+        gyroConfig = GFS_31_25DPS;
+        gyroDivisor = 32768.0f / 31.25f; // ≈ 1048.96
+    } else if (gyroMaxMag >= 0.0329f && gyroMaxMag < 0.0658f) { // Near ±31.25°/s limit, switch to ±62.5°/s
+        gyroConfig = GFS_62_5DPS;
+        gyroDivisor = 32768.0f / 62.5f; // ≈ 524.29
+    } else if (gyroMaxMag >= 0.0658f && gyroMaxMag < 0.1316f) { // Near ±62.5°/s limit, switch to ±125°/s
+        gyroConfig = GFS_125DPS;
+        gyroDivisor = 32768.0f / 125.0f; // ≈ 262.14
+    } else if (gyroMaxMag >= 0.1316f && gyroMaxMag < 0.2632f) { // Near ±125°/s limit, switch to ±250°/s
+        gyroConfig = GFS_250DPS;
+        gyroDivisor = 32768.0f / 250.0f; // ≈ 131.07
+    } else if (gyroMaxMag >= 0.4363f && gyroMaxMag < 0.8727f) { // Near ±250°/s limit, switch to ±500°/s
         gyroConfig = GFS_500DPS;
-        gyroDivisor = 65.5f;
-    } else if (gyroMaxMag >= 8.7266f && gyroMaxMag < 17.4533f) { // Near ±500°/s limit, switch to ±1000°/s
+        gyroDivisor = 32768.0f / 500.0f; // ≈ 65.54
+    } else if (gyroMaxMag >= 0.8727f && gyroMaxMag < 1.7453f) { // Near ±500°/s limit, switch to ±1000°/s
         gyroConfig = GFS_1000DPS;
-        gyroDivisor = 32.8f;
-    } else if (gyroMaxMag >= 17.4533f && gyroMaxMag < 34.9066f) { // Near ±1000°/s limit, switch to ±2000°/s
+        gyroDivisor = 32768.0f / 1000.0f; // ≈ 32.77
+    } else if (gyroMaxMag >= 1.7453f && gyroMaxMag < 3.4907f) { // Near ±1000°/s limit, switch to ±2000°/s
         gyroConfig = GFS_2000DPS;
-        gyroDivisor = 16.4f;
-    } else { // Default to ±250°/s for maximum resolution
+        gyroDivisor = 32768.0f / 2000.0f; // ≈ 16.38
+    } else if (gyroMaxMag < 0.0165f) { // Default to ±15.125°/s for maximum resolution
+        gyroConfig = GFS_15_125DPS;
+        gyroDivisor = 32768.0f / 15.125f; // ≈ 2166.98
+    } else {
         gyroConfig = GFS_250DPS;
         gyroDivisor = 131.0f;
     }

@@ -132,10 +132,9 @@ uint16_t INA219_ReadPower(INA219_t *ina219)
  * @example: 	GetBatteryLife(&ina219, 6000, 4000)
  * 				returns 75
  */
-uint8_t INA219_GetBatteryLife(INA219_t *ina219,float batteryMax, float batteryMin)
+uint8_t GetBatteryLife(uint16_t Vbattery ,float batteryMax, float batteryMin)
 {
 	float  percentageLife = 0.0f;
-	uint16_t Vbattery = INA219_ReadBusVoltage(ina219);
 	percentageLife = (Vbattery - batteryMin) / (batteryMax - batteryMin);
 	if(percentageLife >= 0 )
 	{
@@ -418,10 +417,14 @@ uint8_t initINA219()
 void refreshINA219Values()
 {
 	Vbattery = INA219_ReadBusVoltage(&ina219);
+	batteryLife = GetBatteryLife(Vbattery, 4200.0f, 3000.0f);
+
+	__disable_irq();
 	Vshunt = INA219_ReadShuntVolage(&ina219);
 	Current = INA219_ReadCurrent(&ina219);
 	Power = INA219_ReadPower(&ina219);
-	batteryLife = INA219_GetBatteryLife(&ina219, 4200.0f, 3000.0f);
+
+
 
 	// Detect charging: if Vshunt > threshold (e.g., 100mV), assume charging
 	// You may want to tune this threshold for your setup
@@ -435,4 +438,6 @@ void refreshINA219Values()
 		Current = -Current;
 		Power = -Power;
 	}
+
+	__enable_irq();
 }

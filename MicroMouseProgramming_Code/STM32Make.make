@@ -86,6 +86,7 @@ Core/Src/VL53L0X.c \
 Core/Src/instrumented/ADCs.c \
 Core/Src/instrumented/Buttons.c \
 Core/Src/instrumented/IMU.c \
+Core/Src/instrumented/INA219.c \
 Core/Src/instrumented/LEDs.c \
 Core/Src/instrumented/Motors.c \
 Core/Src/instrumented/SSD1306.c \
@@ -117,6 +118,8 @@ Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pcd.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pcd_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c \
@@ -124,7 +127,25 @@ Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c \
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_ll_usb.c \
+FATFS/App/fatfs.c \
+FATFS/Target/user_diskio.c \
+Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c \
+Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c \
+Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c \
+Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c \
+Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c \
+Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
+Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
+Middlewares/Third_Party/FatFs/src/diskio.c \
+Middlewares/Third_Party/FatFs/src/ff.c \
+Middlewares/Third_Party/FatFs/src/ff_gen_drv.c \
+Middlewares/Third_Party/FatFs/src/option/syscall.c \
+USB_DEVICE/App/usb_device.c \
+USB_DEVICE/App/usbd_desc.c \
+USB_DEVICE/App/usbd_storage_if.c \
+USB_DEVICE/Target/usbd_conf.c
 
 
 CXX_SOURCES = \
@@ -221,7 +242,14 @@ C_INCLUDES =  \
 -IDrivers/CMSIS/Device/ST/STM32L4xx/Include \
 -IDrivers/CMSIS/Include \
 -IDrivers/STM32L4xx_HAL_Driver/Inc \
--IDrivers/STM32L4xx_HAL_Driver/Inc/Legacy
+-IDrivers/STM32L4xx_HAL_Driver/Inc/Legacy \
+-IFATFS/App \
+-IFATFS/Target \
+-IMiddlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc \
+-IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
+-IMiddlewares/Third_Party/FatFs/src \
+-IUSB_DEVICE/App \
+-IUSB_DEVICE/Target
 
 
 
@@ -371,6 +399,14 @@ clean:
 # custom makefile rules
 #######################################
 
+
+
+#######################################
+# sayhello
+#######################################
+sayhello: $(BUILD_DIR)/$(TARGET).elf
+	echo "hello"
+      
 	
 #######################################
 # dependencies
