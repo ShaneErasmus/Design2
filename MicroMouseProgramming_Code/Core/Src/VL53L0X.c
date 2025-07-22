@@ -181,7 +181,7 @@ bool initVL53L0X(bool io_2v8, I2C_HandleTypeDef *handler){
   }
 
   // "Set I2C standard mode"
-  writeReg(VL53L0X_I2C_MODE, VL53L0X_I2C_FAST_MODE);
+  writeReg(VL53L0X_I2C_MODE, VL53L0X_I2C_STANDARD_MODE);
 
   writeReg(0x80, 0x01);
   writeReg(0xFF, 0x01);
@@ -402,7 +402,7 @@ bool setSignalRateLimit(uint16_t limit_kcps) {
 
 void initVL53L0(uint8_t newToFAddress, uint16_t signalRate){
   uint8_t status = 0;
-  status = initVL53L0X(1, &hi2c2);
+  status = initVL53L0X(0, &hi2c2);
   if (status == false){ Error_Handler();}
 
   uint8_t PreRange = 18;

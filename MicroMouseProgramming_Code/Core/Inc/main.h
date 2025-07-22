@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define I2C_TIMEOUT 0xFFFU
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -66,7 +66,16 @@ void MX_ADC1_Init(void);
 void MX_I2C1_Init(void);
 
 /* USER CODE BEGIN EFP */
-
+void initMicroMouse(void);
+void configureTimer(float desired_frequency, TIM_TypeDef* tim);
+void sendToSimulink(void);
+void recievedFromSimulink(void);
+uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAddresses);
+void initUSB(void);
+void refreshUSB(void);
+void logSelectedVariables(void);
+void updateMicroMouse(void);
+void restartI2C(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

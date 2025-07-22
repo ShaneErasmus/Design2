@@ -327,31 +327,28 @@ void logSelectedVariables() {
 
 void updateMicroMouse(){
   // Motor Control
-  if (MOTOR_LS >= 0) {
-    TIM3->CCR3 = abs(MOTOR_LS)*1;
-    TIM3->CCR4 = 0;
-  } else {
-    TIM3->CCR3 = 0;
-    TIM3->CCR4 = abs(MOTOR_LS)*1;
-  }
-  if (MOTOR_RS >= 0) {
-    TIM4->CCR1 = abs(MOTOR_RS)*1;
-    TIM4->CCR2 = 0;
-  } else {
-    TIM4->CCR1 = 0;
-    TIM4->CCR2 = abs(MOTOR_RS)*1;
-  }
+  // TIM4->CCR1 = 0;
+  // TIM4->CCR2 = 0;
+  // TIM3->CCR3 = 0;
+  // TIM3->CCR4 = 0;
 
   // update screen
   refreshADCs();
   refreshScreen();
-  refreshMotors();
   refreshLEDs();
   refreshSWValues();
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
   refreshUSB();
+  refreshMotors();
+}
+
+void restartI2C(){
+  HAL_I2C_DeInit(&hi2c1);
+  HAL_I2C_Init(&hi2c1);
+  HAL_I2C_DeInit(&hi2c2);
+  HAL_I2C_Init(&hi2c2);
 }
 
 #ifndef COMPILED_BY_SIMULINK
@@ -395,6 +392,8 @@ void main(void)
   HAL_TIM_Base_Start_IT(&htim5);
 
   HAL_UART_Receive_DMA(&huart1,(uint8_t *) &bigBuffer, sizeof(bigBuffer));
+
+  MOTOR_RS = 8000/50;
 
   while (1)
   {
@@ -588,7 +587,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00B10E24;
+  hi2c1.Init.Timing = 0x20A1081B;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -610,14 +609,10 @@ void MX_I2C1_Init(void)
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 15) != HAL_OK)
   {
     Error_Handler();
   }
-
-  /** I2C Fast mode Plus enable
-  */
-  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C1);
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
@@ -640,7 +635,7 @@ void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00B10E24;
+  hi2c2.Init.Timing = 0x20A1081B;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -662,14 +657,10 @@ void MX_I2C2_Init(void)
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 15) != HAL_OK)
   {
     Error_Handler();
   }
-
-  /** I2C Fast mode Plus enable
-  */
-  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C2);
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
@@ -878,7 +869,7 @@ void MX_TIM4_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {

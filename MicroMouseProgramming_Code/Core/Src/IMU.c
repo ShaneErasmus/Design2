@@ -50,14 +50,14 @@ static void WriteMem(uint8_t devAddress, uint8_t RegisterAddress, uint16_t Value
   uint8_t addr[2];
   addr[0] = (Value >> 8) & 0xff;  // upper byte
   addr[1] = (Value >> 0) & 0xff; // lower byte
-  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, (uint8_t*)addr, 2, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, (uint8_t*)addr, 2, I2C_TIMEOUT);
 }
 
 static uint16_t ReadMem(uint8_t devAddress, uint8_t RegisterAddress)
 {
   uint8_t Value[2];
 
-  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 2, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 2, I2C_TIMEOUT);
 
   return ((Value[0] << 8) | Value[1]);
 }
@@ -65,14 +65,14 @@ static uint16_t ReadMem(uint8_t devAddress, uint8_t RegisterAddress)
 
 static void WriteByte(uint8_t devAddress, uint8_t RegisterAddress, uint8_t Value)
 {
-  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Write(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, I2C_TIMEOUT);
 }
 
 static uint16_t ReadByte(uint8_t devAddress, uint8_t RegisterAddress)
 {
   uint8_t Value;
 
-  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, HAL_MAX_DELAY);
+  HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, I2C_TIMEOUT);
 
   return Value;
 }
@@ -97,14 +97,14 @@ void refreshIMUValues() {
 
 void initIMU() {
     uint8_t wake = 0;
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_PWR_MGMT_1, 1, &wake, 1, HAL_MAX_DELAY);
+    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_PWR_MGMT_1, 1, &wake, 1, I2C_TIMEOUT);
     uint8_t sampleRate = 0x07; // Set sample rate to 1 kHz
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_SMPLRT_DIV, 1, &sampleRate, 1, HAL_MAX_DELAY);
+    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_SMPLRT_DIV, 1, &sampleRate, 1, I2C_TIMEOUT);
     uint8_t accelConfig = IMU_MPU6050_ACCEL_FS_2; // Full range: ±2g
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_ACCEL_CONFIG, 1, &accelConfig, 1, HAL_MAX_DELAY);
+    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_ACCEL_CONFIG, 1, &accelConfig, 1, I2C_TIMEOUT);
     uint8_t gyroConfig = IMU_MPU6050_GYRO_FS_250; // Full range: ±250°/s
-    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_GYRO_CONFIG, 1, &gyroConfig, 1, HAL_MAX_DELAY);
-    HAL_I2C_Mem_Read(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 1, IMU_MPU6050_WHO_AM_I, 1, &checkIMU, 1, HAL_MAX_DELAY);
+    HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_GYRO_CONFIG, 1, &gyroConfig, 1, I2C_TIMEOUT);
+    HAL_I2C_Mem_Read(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 1, IMU_MPU6050_WHO_AM_I, 1, &checkIMU, 1, I2C_TIMEOUT);
 }
 
 void calibrateIMU() {
@@ -160,12 +160,12 @@ void calibrateIMU() {
 
     // Apply new configurations if they changed
     if (lastAccelConfig != accelConfig) {
-        HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_ACCEL_CONFIG, 1, &accelConfig, 1, HAL_MAX_DELAY);
+        HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_ACCEL_CONFIG, 1, &accelConfig, 1, I2C_TIMEOUT);
         lastAccelConfig = accelConfig;
     }
 
     if (lastGyroConfig != gyroConfig) {
-        HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_GYRO_CONFIG, 1, &gyroConfig, 1, HAL_MAX_DELAY);
+        HAL_I2C_Mem_Write(&hi2c2, (IMU_MPU6050_I2C_ADDRESS << 1) + 0, IMU_MPU6050_GYRO_CONFIG, 1, &gyroConfig, 1, I2C_TIMEOUT);
         lastGyroConfig = gyroConfig;
     }
 
