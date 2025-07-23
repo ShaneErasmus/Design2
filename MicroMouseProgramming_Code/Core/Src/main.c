@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbd_storage_if.h" // For USB storage interface functions
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -381,7 +382,7 @@ void main(void)
   MX_USB_DEVICE_Init();
   MX_FATFS_Init();
 
-  initMicroMouse();
+  // initMicroMouse();
   
 
   // Configure timers for desired frequencies
@@ -394,8 +395,17 @@ void main(void)
 
   while (1)
   {
+    // Process any pending flash writes from USB storage
+    #ifdef USE_FLASH
+    if (flash_write_pending) {
+      __disable_irq(); // Disable interrupts to prevent concurrent access
+      USBD_STORAGE_ProcessPendingWrites();
+      __enable_irq();
+    }
+    #endif
+    
     // Main loop code here
-    updateMicroMouse();
+    // updateMicroMouse();
     // sendToSimulink();
     // HAL_Delay(100);
     // counter++;
@@ -1193,42 +1203,12 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  
-  // Ensure flash is locked in error state
-  HAL_FLASH_Lock();
-  
-  // Visual indication of error using LEDs
-  if (LED)
+  // __disable_irq();
+  // initMicroMouse();
+  // __enable_irq();
+  while (1)
   {
-    LED[0] = 1;  // Turn on error LED
-    refreshLEDs();
-  }
-  
-  // Check if we're in an interrupt context
-  if (__get_IPSR() != 0)
-  {
-    // We're in an interrupt - no delays are possible
-    // Set a persistent error indicator and return
-    LED[0] = 1;
-    LED[1] = 1;
-    LED[2] = 1;
-    refreshLEDs();
-    
-    // Consider a system reset for recovery
-    NVIC_SystemReset();
-    
-    return; // Return from interrupt handler
-  }
-  else
-  {
-    // We're in normal context, can use a non-blocking blink pattern
-    // For example, using a timer instead of HAL_Delay
-    while (1)
-    {
-      // Use a simple counter for delay without using HAL_Delay
-      for(volatile uint32_t i = 0; i < 500000; i++) { }
-      HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-    }
+    /* code */
   }
   
   /* USER CODE END Error_Handler_Debug */

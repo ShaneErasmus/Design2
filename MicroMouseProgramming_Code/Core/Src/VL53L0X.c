@@ -74,7 +74,7 @@ void writeReg(uint8_t reg, uint8_t value) {
   msgBuffer[0] = value; // Assign the value to the buffer.
   i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
   // if (i2cStat != HAL_OK) {
-  //   Error_Handler();
+  //   restartI2C();
   // }
 }
 
@@ -84,7 +84,7 @@ void writeReg16Bit(uint8_t reg, uint16_t value){
   memcpy(msgBuffer, &value, 2); // Assign the value to the buffer.
   i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 2, I2C_TIMEOUT);
   // if (i2cStat != HAL_OK) {
-  //   Error_Handler();
+  //   restartI2C();
   // }
 }
 
@@ -94,7 +94,7 @@ void writeReg32Bit(uint8_t reg, uint32_t value){
   memcpy(msgBuffer, &value, 4); // Assign the value to the buffer.
   i2cStat = HAL_I2C_Mem_Write(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_WRITE, reg, 1, msgBuffer, 4, I2C_TIMEOUT);
   // if (i2cStat != HAL_OK) {
-  //   Error_Handler();
+  //   restartI2C();
   // }
 }
 
@@ -409,16 +409,17 @@ bool setSignalRateLimit(uint16_t limit_kcps) {
 void initVL53L0(uint8_t newToFAddress, uint16_t signalRate){
   uint8_t status = 0;
   status = initVL53L0X(0, &hi2c2);
-  if (status == false){ Error_Handler();}
+  if (status == false){ restartI2C();
+  return;}
 
   uint8_t PreRange = 18;
   uint8_t FinalRange = 14;
 
 	// Configure the sensor for high accuracy and speed in 20 cm.
-	if (!setSignalRateLimit(signalRate)) { Error_Handler(); } // Updated to use uint16_t signalRate
-  if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { Error_Handler(); }
-  if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { Error_Handler(); }
-  if (!setMeasurementTimingBudget(50*(FinalRange-PreRange) * 1000UL)) { Error_Handler(); }
+	if (!setSignalRateLimit(signalRate)) { restartI2C(); } // Updated to use uint16_t signalRate
+  if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(); }
+  if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(); }
+  if (!setMeasurementTimingBudget(50*(FinalRange-PreRange) * 1000UL)) { restartI2C(); }
   startContinuous(0);
   setAddress_VL53L0X(newToFAddress);
 
@@ -446,8 +447,8 @@ void calibrateToF(VL53L0_t* TOF_result , uint16_t distance) {
       TOF_result->timingBudget = timingBudget;
       stopContinuous();
       setMeasurementTimingBudget(timingBudget);
-      if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { Error_Handler(); }
-      if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { Error_Handler(); }
+      if (!setVcselPulsePeriod(VcselPeriodPreRange, PreRange)) { restartI2C(); }
+      if (!setVcselPulsePeriod(VcselPeriodFinalRange, FinalRange)) { restartI2C(); }
       startContinuous(0);
     }
 }

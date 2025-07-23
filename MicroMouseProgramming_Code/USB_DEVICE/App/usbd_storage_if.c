@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "ff.h"
+#include "main.h"  // For accessing globals
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +32,10 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+// Flash write operation pending flag - to be checked in main loop
+volatile uint8_t flash_write_pending = 0;
+volatile uint32_t flash_pending_blk_addr = 0;
+volatile uint16_t flash_pending_blk_len = 0;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -68,9 +72,10 @@
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
-#define USE_FLASH
+#define USE_RAM
+// #define USE_FLASH
 #define STORAGE_LUN_NBR                  1
-#define STORAGE_BLK_NBR                  72*2  // enter twice the size of the Memory that you want to use
+#define STORAGE_BLK_NBR                  70*2  // enter twice the size of the Memory that you want to use
 #define STORAGE_BLK_SIZ                  0x200
 
 #define FLASH_PAGE_SIZE 0x800 // 2KB
@@ -256,17 +261,10 @@ static HAL_StatusTypeDef write_data_to_flash(uint32_t blk_addr, uint16_t blk_len
     if (current_value != 0xFFFFFFFFFFFFFFFFULL) {
       HAL_FLASH_Lock();
       
-      // Check if we're in interrupt context
-      if (__get_IPSR() != 0) {
-        // We're in an interrupt - can't safely re-erase here
-        // Mark the error and return
-        data_offset = 0;
-        return HAL_ERROR;
-      }
-      
-      // Only attempt re-erase if we're not in interrupt context
+      // Log the error or take other action as needed
+      // Attempt to erase again
       HAL_FLASH_Unlock();
-      __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+      __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_BSY);
       ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
       if (ret != HAL_OK) {
         HAL_FLASH_Lock();
@@ -288,6 +286,7 @@ static HAL_StatusTypeDef write_data_to_flash(uint32_t blk_addr, uint16_t blk_len
       data_offset = 0;
       return HAL_ERROR;
     }
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_BSY);
   }
   HAL_FLASH_Lock();
   
@@ -418,30 +417,16 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
   memcpy(&USB_storage_buffer[data_offset], buf, blk_len * STORAGE_BLK_SIZ);
   data_offset += blk_len * STORAGE_BLK_SIZ;
   
-  // If buffer is full (2KB) or this is the last block, write to flash
+  // If buffer is full (2KB) or this is the last block, set flag for main loop to write to flash
   if (data_offset >= FLASH_PAGE_SIZE) {
-    // USB callbacks are often called from interrupt context
-    // Check if we're in interrupt context
-    if (__get_IPSR() != 0) {
-      // We're in interrupt context - can't safely write to flash
-      // Just keep the data in the buffer and return OK
-      // The flash write will be handled on the next non-interrupt call
-      if (data_offset > FLASH_PAGE_SIZE) {
-        // If we've exceeded buffer capacity, we have no choice but to truncate
-        data_offset = FLASH_PAGE_SIZE;
-      }
-      return USBD_OK;
-    }
+    // Calculate the starting block address for this buffer
+    uint32_t start_blk_addr = blk_addr - ((data_offset - (blk_len * STORAGE_BLK_SIZ)) / STORAGE_BLK_SIZ);
+    uint16_t total_blks = data_offset / STORAGE_BLK_SIZ;
     
-    // Write the complete buffer to flash (only in non-interrupt context)
-    HAL_StatusTypeDef status = write_data_to_flash(blk_addr - ((data_offset - (blk_len * STORAGE_BLK_SIZ)) / STORAGE_BLK_SIZ), 
-                                                  data_offset / STORAGE_BLK_SIZ);
-    
-    // Handle errors explicitly
-    if (status != HAL_OK) {
-      // In case of error, keep the data in buffer and try again later
-      return USBD_FAIL;
-    }
+    // Set the flag and parameters for the main loop to handle
+    flash_pending_blk_addr = start_blk_addr;
+    flash_pending_blk_len = total_blks;
+    flash_write_pending = 1;
   }
 #endif
 #ifdef USE_RAM
@@ -466,6 +451,33 @@ int8_t STORAGE_GetMaxLun_FS(void)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+/**
+  * @brief  Process pending flash writes - to be called from main loop
+  * @note   This function checks if there are pending flash writes and processes them
+  * @retval None
+  */
+void USBD_STORAGE_ProcessPendingWrites(void)
+{
+  // Check if we have a pending flash write operation
+  if (flash_write_pending) {
+    // Clear the flag first to prevent reentrance issues
+    flash_write_pending = 0;
+    
+    // Local copies of the volatile variables for safety
+    uint32_t blk_addr = flash_pending_blk_addr;
+    uint16_t blk_len = flash_pending_blk_len;
+    
+    // Process the flash write
+    HAL_StatusTypeDef status = write_data_to_flash(blk_addr, blk_len);
+    
+    // Could add error handling here if needed
+    if (status != HAL_OK) {
+      // Handle error if needed
+      // Maybe set an error flag or retry counter
+    }
+  }
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

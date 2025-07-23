@@ -273,28 +273,9 @@ __attribute__((weak)) void TIM6_DAC_IRQHandler (void)
 __attribute__((weak)) void OTG_FS_IRQHandler (void)
 {
   /* USER CODE BEGIN OTG_FS_IRQn 0 */
-  // Clear any pending flags that might be causing repeated interrupts
-  __HAL_PCD_CLEAR_FLAG(&hpcd_USB_OTG_FS, USB_OTG_GINTSTS_MMIS);
-  
-  // Add a static counter to detect repeated USB interrupt issues
-  static uint32_t usb_error_count = 0;
-  
-  // If too many consecutive errors occur, try recovery action
-  if (usb_error_count > 1000) {
-    // Reset the USB peripheral
-    HAL_PCD_Stop(&hpcd_USB_OTG_FS);
-    HAL_PCD_Start(&hpcd_USB_OTG_FS);
-    usb_error_count = 0;
-  }
-  
+
   /* USER CODE END OTG_FS_IRQn 0 */
-  // Handle the USB interrupt - wrap with error counter
-  if (HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS) != HAL_OK) {
-    usb_error_count++;
-  } else {
-    // Reset error counter on successful handling
-    usb_error_count = 0;
-  }
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
   /* USER CODE BEGIN OTG_FS_IRQn 1 */
 
   /* USER CODE END OTG_FS_IRQn 1 */

@@ -30,7 +30,11 @@
 #include "usbd_msc.h"
 
 /* USER CODE BEGIN INCLUDE */
+// Public function to process pending flash writes
+void USBD_STORAGE_ProcessPendingWrites(void);
 
+// Flag indicating pending flash write operations
+extern volatile uint8_t flash_write_pending;
 /* USER CODE END INCLUDE */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
