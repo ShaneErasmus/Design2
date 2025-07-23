@@ -59,6 +59,11 @@ static uint16_t ReadMem(uint8_t devAddress, uint8_t RegisterAddress)
 
   HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 2, I2C_TIMEOUT);
 
+    // Check for I2C errors after all operations
+    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
+        restartI2C();
+    }
+
   return ((Value[0] << 8) | Value[1]);
 }
 
@@ -74,6 +79,10 @@ static uint16_t ReadByte(uint8_t devAddress, uint8_t RegisterAddress)
 
   HAL_I2C_Mem_Read(&hi2c2, (devAddress<<1), RegisterAddress, 1, &Value, 1, I2C_TIMEOUT);
 
+      // Check for I2C errors after all operations
+    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
+        restartI2C();
+    }
   return Value;
 }
 

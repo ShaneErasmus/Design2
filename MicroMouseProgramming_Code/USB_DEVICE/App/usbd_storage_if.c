@@ -68,7 +68,7 @@
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
-#define USE_RAM
+#define USE_FLASH
 #define STORAGE_LUN_NBR                  1
 #define STORAGE_BLK_NBR                  72*2  // enter twice the size of the Memory that you want to use
 #define STORAGE_BLK_SIZ                  0x200
@@ -88,7 +88,6 @@ uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #endif
 #ifdef USE_FLASH
 uint8_t USB_storage_buffer[2048];
-static uint16_t data_offset = 0;
 #endif
 /* USER CODE END PRIVATE_DEFINES */
 
@@ -177,56 +176,137 @@ static int8_t STORAGE_GetMaxLun_FS(void);
 
 #ifdef USE_FLASH
 /**
-  * @brief  Writes data into the FLASH.
-  * @param  buf: data UBS_storage_buffer.
-  * @param  blk_addr: Logical block address.
-  * @param  blk_len: Blocks number.
-  * @retval HAL_StatusTypeDef
+  * @brief  Variables for flash storage
   */
-uint16_t data_offset;
-uint32_t page_addr = 0;
-uint8_t USB_storage_buffer[2048];
+static uint16_t data_offset = 0;
+static uint8_t flash_backup_buffer[2048];  // Buffer to hold existing flash data
+
+/**
+  * @brief  Writes data buffer to flash memory
+  * @param  blk_addr: USB block address to write
+  * @param  blk_len: Number of blocks to write
+  * @retval HAL status
+  */
 static HAL_StatusTypeDef write_data_to_flash(uint32_t blk_addr, uint16_t blk_len)
 {
   HAL_StatusTypeDef ret = HAL_OK;
-  // Fill the buffer with incoming blocks (already done in STORAGE_Write_FS)
-  if (data_offset == 0) {
-    // Calculate page address for this write
-    page_addr = USB_FLASH_START_ADDRESS + ((blk_addr / 4) * 2048);
-    // Ensure page_addr is within user area
-    if (page_addr < FLASH_USER_START_ADDR || page_addr > FLASH_USER_END_ADDR) {
+  
+  // Calculate which page this block belongs to (4 blocks per 2KB page)
+  uint32_t target_page = blk_addr / 4;
+  
+  // Calculate flash address for this page
+  uint32_t page_addr = USB_FLASH_START_ADDRESS + (target_page * FLASH_PAGE_SIZE);
+  
+  // Ensure page_addr is within user area
+  if (page_addr < FLASH_USER_START_ADDR || page_addr > FLASH_USER_END_ADDR) {
+    return HAL_ERROR;
+  }
+  
+  // Read existing page content into backup buffer
+  memcpy(flash_backup_buffer, (const void*)page_addr, FLASH_PAGE_SIZE);
+
+  // Calculate the start offset within the page
+  uint32_t start_offset = (blk_addr % 4) * STORAGE_BLK_SIZ;
+  uint32_t end_offset = start_offset + (blk_len * STORAGE_BLK_SIZ);
+  
+  // Preserve any existing data in the page that we're not updating
+  for (uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
+    if (i < start_offset || i >= end_offset) {
+      USB_storage_buffer[i] = flash_backup_buffer[i];
+    }
+  }
+  
+  // Page number is relative to the bank (Bank 2, page numbers start at 128)
+  uint32_t page_num = 128 + ((page_addr - USB_FLASH_START_ADDRESS) / FLASH_PAGE_SIZE);
+  
+  // Check if block address crosses a page boundary
+  uint32_t current_block_page = target_page;
+  uint32_t end_block_page = (blk_addr + blk_len - 1) / 4;
+  
+  // Erase and program the flash page
+  FLASH_EraseInitTypeDef EraseInitStruct;
+  uint32_t SectorError = 0;
+  
+  HAL_FLASH_Unlock();
+  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+  
+  // Set up erase parameters
+  EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+  EraseInitStruct.Banks = FLASH_BANK_2;
+  EraseInitStruct.Page = page_num;
+  EraseInitStruct.NbPages = 1;
+  
+  // Erase the page
+  ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+  if (SectorError != 0xFFFFFFFF && ret != HAL_OK) {
+    HAL_FLASH_Lock();
+    return HAL_ERROR;
+  }
+
+  // Write 2KB page as 256 consecutive 64-bit doublewords
+  for (uint32_t i = 0; i < 256; i++) {
+    // Get the current address to write to
+    uint32_t current_addr = page_addr + (i * 8);
+    
+    // Check if the memory is fully erased (should be all 0xFF after erase)
+    uint64_t *flash_ptr = (uint64_t*)current_addr;
+    uint64_t current_value = *flash_ptr;
+    
+    // If memory is not properly erased, we need to re-erase
+    if (current_value != 0xFFFFFFFFFFFFFFFFULL) {
+      HAL_FLASH_Lock();
+      
+      // Check if we're in interrupt context
+      if (__get_IPSR() != 0) {
+        // We're in an interrupt - can't safely re-erase here
+        // Mark the error and return
+        data_offset = 0;
+        return HAL_ERROR;
+      }
+      
+      // Only attempt re-erase if we're not in interrupt context
+      HAL_FLASH_Unlock();
+      __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
+      ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+      if (ret != HAL_OK) {
+        HAL_FLASH_Lock();
+        data_offset = 0;
+        return HAL_ERROR;
+      }
+      
+      // Start the write loop again from the beginning
+      i = 0;
+      continue;
+    }
+    
+    // Prepare the data and program the flash
+    uint64_t dword;
+    memcpy(&dword, &USB_storage_buffer[i * 8], 8);
+    ret = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, current_addr, dword);
+    if (ret != HAL_OK) {
+      HAL_FLASH_Lock();
+      data_offset = 0;
       return HAL_ERROR;
     }
   }
-  data_offset += blk_len * STORAGE_BLK_SIZ;
-  // If buffer is full (2KB), erase and write page
-  if (data_offset >= 2048) {
-    uint32_t page_num = (page_addr - USB_FLASH_START_ADDRESS) / 2048;
-
-    HAL_FLASH_Unlock();
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
-    FLASH_EraseInitTypeDef EraseInitStruct;
-    uint32_t SectorError;
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.Banks = FLASH_BANK_2;
-    EraseInitStruct.Page = page_num;
-    EraseInitStruct.NbPages = 1;
-    ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
-
-    // Write 2KB page as 256 consecutive 64-bit doublewords (DOUBLEWORD programming)
-    for (uint32_t i = 0; i < 256; i++) {
-      uint64_t dword;
-      memcpy(&dword, &USB_storage_buffer[i * 8], 8);
-      ret = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, page_addr + i * 8, dword);
-      if (ret != HAL_OK) {
-        data_offset = 0;
-        HAL_FLASH_Lock();
-        return HAL_ERROR;
-      }
+  HAL_FLASH_Lock();
+  
+  // If we crossed a page boundary, prepare for the next page
+  if (current_block_page != end_block_page) {
+    // Calculate the next block address to start from
+    uint32_t next_page_start_blk = (target_page + 1) * 4;
+    uint32_t blocks_written = next_page_start_blk - blk_addr;
+    uint32_t remaining_blocks = blk_len - blocks_written;
+    
+    if (remaining_blocks > 0) {
+      // Call recursively to handle the next page
+      return write_data_to_flash(next_page_start_blk, remaining_blocks);
     }
-    HAL_FLASH_Lock();
-    data_offset = 0; // Reset buffer
   }
+  
+  // Reset buffer offset
+  data_offset = 0;
+  
   return ret;
 }
 #endif
@@ -334,11 +414,34 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 {
   /* USER CODE BEGIN 7 */
 #ifdef USE_FLASH
+  // Copy data to our buffer at current offset
   memcpy(&USB_storage_buffer[data_offset], buf, blk_len * STORAGE_BLK_SIZ);
   data_offset += blk_len * STORAGE_BLK_SIZ;
-  if (data_offset >= 2048) {
-    write_data_to_flash(blk_addr, blk_len);
-    data_offset = 0;
+  
+  // If buffer is full (2KB) or this is the last block, write to flash
+  if (data_offset >= FLASH_PAGE_SIZE) {
+    // USB callbacks are often called from interrupt context
+    // Check if we're in interrupt context
+    if (__get_IPSR() != 0) {
+      // We're in interrupt context - can't safely write to flash
+      // Just keep the data in the buffer and return OK
+      // The flash write will be handled on the next non-interrupt call
+      if (data_offset > FLASH_PAGE_SIZE) {
+        // If we've exceeded buffer capacity, we have no choice but to truncate
+        data_offset = FLASH_PAGE_SIZE;
+      }
+      return USBD_OK;
+    }
+    
+    // Write the complete buffer to flash (only in non-interrupt context)
+    HAL_StatusTypeDef status = write_data_to_flash(blk_addr - ((data_offset - (blk_len * STORAGE_BLK_SIZ)) / STORAGE_BLK_SIZ), 
+                                                  data_offset / STORAGE_BLK_SIZ);
+    
+    // Handle errors explicitly
+    if (status != HAL_OK) {
+      // In case of error, keep the data in buffer and try again later
+      return USBD_FAIL;
+    }
   }
 #endif
 #ifdef USE_RAM

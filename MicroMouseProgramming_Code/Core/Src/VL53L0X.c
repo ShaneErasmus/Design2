@@ -103,6 +103,12 @@ uint8_t readReg(uint8_t reg) {
   uint8_t value;
 
   i2cStat = HAL_I2C_Mem_Read(&VL53L0X_I2C_Handler, g_i2cAddr | I2C_READ, reg, 1, msgBuffer, 1, I2C_TIMEOUT);
+  
+    // Check for I2C errors after all operations
+    if (hi2c2.ErrorCode != HAL_I2C_ERROR_NONE) {
+        restartI2C();
+    }
+  
   value = msgBuffer[0];
 
   return value;

@@ -32,7 +32,12 @@ uint16_t Read16(INA219_t *ina219, uint8_t Register)
 {
 	uint8_t Value[2];
 
-	HAL_I2C_Mem_Read(ina219->ina219_i2c, (INA219_ADDRESS<<1), Register, 1, Value, 2, 1000);
+	HAL_I2C_Mem_Read(ina219->ina219_i2c, (INA219_ADDRESS<<1), Register, 1, Value, 2, I2C_TIMEOUT);
+
+    // Check for I2C errors after all operations
+    if (ina219->ina219_i2c->ErrorCode != HAL_I2C_ERROR_NONE) {
+        restartI2C();
+    }
 
 	return ((Value[0] << 8) | Value[1]);
 }
@@ -57,7 +62,7 @@ HAL_StatusTypeDef Write16(INA219_t *ina219, uint8_t Register, uint16_t Value)
 	uint8_t addr[2];
 	addr[0] = (Value >> 8) & 0xff;  // upper byte
 	addr[1] = (Value >> 0) & 0xff; // lower byte
-	return HAL_I2C_Mem_Write(ina219->ina219_i2c, (INA219_ADDRESS<<1), Register, 1, (uint8_t*)addr, 2, 1000);
+	return HAL_I2C_Mem_Write(ina219->ina219_i2c, (INA219_ADDRESS<<1), Register, 1, (uint8_t*)addr, 2, I2C_TIMEOUT);
 }
 
 /*
@@ -419,25 +424,26 @@ void refreshINA219Values()
 	Vbattery = INA219_ReadBusVoltage(&ina219);
 	batteryLife = GetBatteryLife(Vbattery, 4200.0f, 3000.0f);
 
-	__disable_irq();
+	
 	Vshunt = INA219_ReadShuntVolage(&ina219);
 	Current = INA219_ReadCurrent(&ina219);
 	Power = INA219_ReadPower(&ina219);
-
+	
+	__disable_irq();
 
 
 	// Detect charging: if Vshunt > threshold (e.g., 100mV), assume charging
 	// You may want to tune this threshold for your setup
-	if (Vshunt > 100) {
-		// Calculate Current as Power/Vbattery (in mA)
-		if (Vbattery > 0) {
-			Current = (int16_t)((float)Power / ((float)Vbattery / 1000.0f)); // Vbattery in mV to V
-			Vshunt = (uint16_t)(Current * 0.05f); // Rshunt = 0.05 Ohm, Vshunt in mV
-		}
-		// Indicate charging by making Current and Power negative
-		Current = -Current;
-		Power = -Power;
-	}
+	// if (Vshunt > 100) {
+	// 	// Calculate Current as Power/Vbattery (in mA)
+	// 	if (Vbattery > 0) {
+	// 		Current = (int16_t)((float)Power / ((float)Vbattery / 1000.0f)); // Vbattery in mV to V
+	// 		Vshunt = (uint16_t)(Current * 0.05f); // Rshunt = 0.05 Ohm, Vshunt in mV
+	// 	}
+	// 	// Indicate charging by making Current and Power negative
+	// 	Current = -Current;
+	// 	Power = -Power;
+	// }
 
 	__enable_irq();
 }
