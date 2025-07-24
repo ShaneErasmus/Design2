@@ -63,7 +63,8 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 96K
 RAM2 (xrw)      : ORIGIN = 0x10000000, LENGTH = 32K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 512K
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 256K
+FLASH2 (rx)      : ORIGIN = 0x8040000, LENGTH = 256K
 }
 
 /* Define output sections */
@@ -144,6 +145,15 @@ SECTIONS
     PROVIDE_HIDDEN (__fini_array_end = .);
 	. = ALIGN(8);
   } >FLASH
+
+  /* Preformatted flash section - will be placed in FLASH2 memory region */
+  .preformatted_flash :
+  {
+    . = ALIGN(8);
+    *(.preformatted_flash)         /* Preformatted flash data section */
+    *(.preformatted_flash*)        /* Any subsections if needed */
+    . = ALIGN(8);
+  } >FLASH2
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);

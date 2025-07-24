@@ -24,6 +24,7 @@
 /* USER CODE BEGIN INCLUDE */
 #include "ff.h"
 #include "main.h"  // For accessing globals
+#include "preformatted_flash.h"  // For accessing preformatted flash data
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,8 +73,8 @@ volatile uint16_t flash_pending_blk_len = 0;
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
 
-#define USE_RAM
-// #define USE_FLASH
+// #define USE_RAM
+#define USE_FLASH
 #define STORAGE_LUN_NBR                  1
 #define STORAGE_BLK_NBR                  70*2  // enter twice the size of the Memory that you want to use
 #define STORAGE_BLK_SIZ                  0x200
@@ -93,6 +94,7 @@ uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #endif
 #ifdef USE_FLASH
 uint8_t USB_storage_buffer[2048];
+extern const uint8_t USB_PREFORMATED[];
 #endif
 /* USER CODE END PRIVATE_DEFINES */
 
@@ -390,10 +392,7 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 {
   /* USER CODE BEGIN 6 */
 #ifdef USE_FLASH
-  memcpy( buf,
-          (const void *)(USB_FLASH_START_ADDRESS + ( blk_addr * STORAGE_BLK_SIZ )),
-          (blk_len * STORAGE_BLK_SIZ)
-        );
+ memcpy(buf, USB_PREFORMATED[blk_addr*STORAGE_BLK_SIZ], blk_len*STORAGE_BLK_SIZ);
 #endif
 #ifdef USE_RAM
   memcpy(buf, &USB_storage_buffer[blk_addr*STORAGE_BLK_SIZ], blk_len*STORAGE_BLK_SIZ);
@@ -413,27 +412,11 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 {
   /* USER CODE BEGIN 7 */
 #ifdef USE_FLASH
-  // Copy data to our buffer at current offset
-  memcpy(&USB_storage_buffer[data_offset], buf, blk_len * STORAGE_BLK_SIZ);
-  data_offset += blk_len * STORAGE_BLK_SIZ;
-  
-  // If buffer is full (2KB) or this is the last block, set flag for main loop to write to flash
-  if (data_offset >= FLASH_PAGE_SIZE) {
-    // Calculate the starting block address for this buffer
-    uint32_t start_blk_addr = blk_addr - ((data_offset - (blk_len * STORAGE_BLK_SIZ)) / STORAGE_BLK_SIZ);
-    uint16_t total_blks = data_offset / STORAGE_BLK_SIZ;
-    
-    // Set the flag and parameters for the main loop to handle
-    flash_pending_blk_addr = start_blk_addr;
-    flash_pending_blk_len = total_blks;
-    flash_write_pending = 1;
-  }
+
 #endif
 #ifdef USE_RAM
-
   memcpy(&USB_storage_buffer[blk_addr*STORAGE_BLK_SIZ], buf, blk_len*STORAGE_BLK_SIZ);
-
-  #endif
+#endif
   return (USBD_OK);
   /* USER CODE END 7 */
 }

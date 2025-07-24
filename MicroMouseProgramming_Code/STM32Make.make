@@ -99,6 +99,7 @@ Core/Src/instrumented/syscalls.c \
 Core/Src/instrumented/sysmem.c \
 Core/Src/instrumented/system_stm32l4xx.c \
 Core/Src/main.c \
+Core/Src/preformatted_flash.c \
 Core/Src/stm32l4xx_hal_msp.c \
 Core/Src/stm32l4xx_hal_timebase_tim.c \
 Core/Src/stm32l4xx_it.c \
