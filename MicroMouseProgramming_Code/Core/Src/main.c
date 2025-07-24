@@ -262,10 +262,10 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
-
+extern uint8_t USB_PREFORMATED[];
 BYTE work[4096];
 void initUSB(){
-  FRESULT res = f_mkfs("0:", FM_FAT32 | FM_SFD, 0, work, sizeof(work));
+  FRESULT res = f_mkfs("0:", FM_FAT | FM_SFD, 0, USB_PREFORMATED, sizeof(USB_PREFORMATED));
 }
 
 void refreshUSB(){
@@ -382,7 +382,7 @@ void main(void)
   MX_USB_DEVICE_Init();
   MX_FATFS_Init();
 
-  // initMicroMouse();
+  initMicroMouse();
   
 
   // Configure timers for desired frequencies
@@ -405,7 +405,7 @@ void main(void)
     #endif
     
     // Main loop code here
-    // updateMicroMouse();
+    updateMicroMouse();
     // sendToSimulink();
     // HAL_Delay(100);
     // counter++;

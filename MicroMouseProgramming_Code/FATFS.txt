@@ -1,9 +1,5 @@
+/* Auto-generated C array from 72KB_noFile_converted.hex */
 #include <stdint.h>
-#include "preformatted_flash.h"
-
-#define USE_FLASH
-#ifdef USE_FLASH
-
 
 #define USB_PREFORMATED_SIZE 73728
 
@@ -4617,14 +4613,3 @@ const uint8_t USB_PREFORMATED[USB_PREFORMATED_SIZE] __attribute__((section(".pre
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
-
-// Function to get a pointer to the preformatted data
-uint8_t* get_preformatted_data(void) {
-    return USB_PREFORMATED;
-}
-
-// Function to get the size of the preformatted data
-uint32_t get_preformatted_data_size(void) {
-    return USB_PREFORMATED_SIZE;
-}
-#endif
