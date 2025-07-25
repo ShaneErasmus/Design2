@@ -322,13 +322,6 @@ void logSelectedVariables() {
     (IMU_Gyro[1])
   );
 
-  if (f_open(&file, "STM32.txt", FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_READ | FA_WRITE) != FR_OK) return;
-  if (f_lseek(&file, f_size(&file)) != FR_OK) { f_close(&file); return; }
-  res = f_write(&file, logLine, strlen(logLine), &bytesWritten);
-  if ((bytesWritten > 0) && (res == FR_OK)) {
-    if (f_sync(&file) != FR_OK) { f_close(&file); return; }
-  } else { f_close(&file); return; }
-  f_close(&file);
 }
 
 void updateMicroMouse(){
