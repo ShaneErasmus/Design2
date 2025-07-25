@@ -72,27 +72,7 @@ volatile uint16_t flash_pending_blk_len = 0;
 #define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-
-
-#undef STORAGE_LUN_NBR
-#undef STORAGE_BLK_NBR
-#undef STORAGE_BLK_SIZ  
-
-// #define USE_RAM
-#define USE_FLASH
-#define STORAGE_LUN_NBR                  1
-#define STORAGE_BLK_NBR                  256*2  // enter twice the size of the Memory that you want to use
-#define STORAGE_BLK_SIZ                  0x200
-
-#define FLASH_PAGE_SIZE 0x800 // 2KB
-#define ADDR_FLASH_PAGE_128 (0x08000000 + 128 * FLASH_PAGE_SIZE)
-#define ADDR_FLASH_PAGE_255 (0x08000000 + 255 * FLASH_PAGE_SIZE)
-#define FLASH_USER_START_ADDR   ADDR_FLASH_PAGE_128
-#define FLASH_USER_END_ADDR     (ADDR_FLASH_PAGE_255 + FLASH_PAGE_SIZE - 1)
-#define FLASH_ROW_SIZE          32 // 32 doublewords (256 bytes per row)
-
-#define USB_FLASH_START_ADDRESS   0x08040000   
-#define TOTAL_USB_DEVICE_SIZE   ( STORAGE_BLK_NBR * STORAGE_BLK_SIZ )
+#include "preformatted_flash.h"
 
 #ifdef USE_RAM
 uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
