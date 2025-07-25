@@ -262,10 +262,17 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
+
+#ifdef USE_FLASH
+extern const uint8_t USB_PREFORMATED[];
+#else
 extern uint8_t USB_PREFORMATED[];
+#endif
+
 BYTE work[4096];
 void initUSB(){
-  FRESULT res = f_mkfs("0:", FM_FAT | FM_SFD, 0, USB_PREFORMATED, sizeof(USB_PREFORMATED));
+  // For preformatted image, do not call f_mkfs. FatFS will use USB_PREFORMATED as the filesystem buffer.
+  // No formatting needed; just mount and use.
 }
 
 void refreshUSB(){

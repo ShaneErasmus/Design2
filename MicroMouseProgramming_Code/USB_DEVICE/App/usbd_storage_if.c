@@ -81,7 +81,7 @@ volatile uint16_t flash_pending_blk_len = 0;
 // #define USE_RAM
 #define USE_FLASH
 #define STORAGE_LUN_NBR                  1
-#define STORAGE_BLK_NBR                  72*2  // enter twice the size of the Memory that you want to use
+#define STORAGE_BLK_NBR                  256*2  // enter twice the size of the Memory that you want to use
 #define STORAGE_BLK_SIZ                  0x200
 
 #define FLASH_PAGE_SIZE 0x800 // 2KB
