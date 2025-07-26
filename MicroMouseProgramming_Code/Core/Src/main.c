@@ -1,3 +1,32 @@
+// Logging
+extern uint8_t USB_storage_buffer[2*1024];
+extern uint16_t usb_storage_buffer_index;
+extern bool readyToLog;
+
+void initLogs() {
+    // Configure TIM7 for 30Hz
+    configureTimer(30, TIM7);
+    HAL_TIM_Base_Start_IT(&htim7);
+    readyToLog = false;
+}
+
+void refreshLoggedData() {
+    if (!readyToLog) return;
+    MicroMouseLog_t log;
+    log.Distance_Left = TOF_left_result.Distance;
+    log.Distance_Centre = TOF_centre_result.Distance;
+    log.Distance_Right = TOF_right_result.Distance;
+    log.Motor_Left = MOTOR_LS;
+    log.Motor_Right = MOTOR_RS;
+    log.crc = 0; // Optionally calculate CRC here
+    memcpy(&USB_storage_buffer[usb_storage_buffer_index], &log, sizeof(MicroMouseLog_t));
+    usb_storage_buffer_index += sizeof(MicroMouseLog_t);
+    if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
+        Flash_Write_Data(LOG_FILE_DATA, USB_storage_buffer, sizeof(USB_storage_buffer));
+        usb_storage_buffer_index = 0;
+    }
+    readyToLog = false;
+}
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -66,7 +95,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
-TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_rx;
@@ -78,6 +107,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_TIM7_Init(void);
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -130,8 +160,6 @@ extern uint8_t SW[2];
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
-
-uint8_t readyToGetToF = 0;
 
 // functions
 
@@ -300,12 +328,23 @@ void updateMicroMouse(){
   // update screen
   refreshADCs();
   refreshScreen();
+
+  // Show sensor data on screen
+  char line1[32], line2[32], line3[32];
+  sprintf(line1, "%.2fL  %.2fC  %.2fR", (float)TOF_left_result.Distance, (float)TOF_centre_result.Distance, (float)TOF_right_result.Distance);
+  sprintf(line2, "X%.2f  Y%.2f  Z%.2f", IMU_Accel[0], IMU_Accel[1], IMU_Accel[2]);
+  sprintf(line3, "%.2fV  %.3fmA %.3f%%", (float)Vbattery/1000.0f, (float)Current/1000.0f, (float)batteryLife);
+  SSD1306_GotoXY(0, 0); SSD1306_Puts(line1, &Font_7x10, 1);
+  SSD1306_GotoXY(0, 12); SSD1306_Puts(line2, &Font_7x10, 1);
+  SSD1306_GotoXY(0, 24); SSD1306_Puts(line3, &Font_7x10, 1);
+
   refreshLEDs();
   refreshSWValues();
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
   refreshMotors();
+  refreshLoggedData();
 }
 
 void restartI2C(){
@@ -342,7 +381,7 @@ void main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
-  MX_TIM6_Init();
+  MX_TIM7_Init();
   MX_USART1_UART_Init();
   MX_USB_DEVICE_Init();
   MX_FATFS_Init();
@@ -456,9 +495,6 @@ static void MX_NVIC_Init(void)
   /* TIM5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM5_IRQn);
-  /* TIM6_DAC_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
   /* DMA2_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
@@ -939,40 +975,40 @@ void MX_TIM5_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
+  * @brief TIM7 Initialization Function
   * @param None
   * @retval None
   */
-void MX_TIM6_Init(void)
+static void MX_TIM7_Init(void)
 {
 
-  /* USER CODE BEGIN TIM6_Init 0 */
+  /* USER CODE BEGIN TIM7_Init 0 */
 
-  /* USER CODE END TIM6_Init 0 */
+  /* USER CODE END TIM7_Init 0 */
 
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM6_Init 1 */
+  /* USER CODE BEGIN TIM7_Init 1 */
 
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 0;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 65535;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 1;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 65535;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM6_Init 2 */
+  /* USER CODE BEGIN TIM7_Init 2 */
 
-  /* USER CODE END TIM6_Init 2 */
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -1161,7 +1197,7 @@ void MX_GPIO_Init(void)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM2 interrupt took place, inside
+  * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -1172,7 +1208,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM2) {
+  if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */

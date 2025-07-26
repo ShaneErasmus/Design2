@@ -62,10 +62,13 @@ float Flash_Read_NUM(uint32_t StartSectorAddress);
 
 #define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
 typedef struct {
-    uint32_t timestamp;
-    uint16_t sensor1;
-    uint16_t sensor2;
-    // ... add your fields ...
+    uint16_t Distance_Left;
+    uint16_t Distance_Centre;
+    uint16_t Distance_Right;
+    int8_t Motor_Left;
+    int8_t Motor_Right;
+    uint32_t crc; // CRC for data integrity
+    // Add more fields as needed
 } MicroMouseLog_t;
 
 // Function to get a pointer to the preformatted data
