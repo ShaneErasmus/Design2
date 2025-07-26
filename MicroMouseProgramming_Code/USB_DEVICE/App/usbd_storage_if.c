@@ -75,12 +75,14 @@ volatile uint16_t flash_pending_blk_len = 0;
 #include "preformatted_flash.h"
 
 #ifdef USE_RAM
-uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
+extern uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #endif
 #ifdef USE_FLASH
-uint8_t USB_storage_buffer[2048];
+extern uint8_t USB_storage_buffer[];
 extern const uint8_t USB_PREFORMATED[];
 #endif
+
+
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -162,140 +164,8 @@ static int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uin
 static int8_t STORAGE_GetMaxLun_FS(void);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-#include <stdbool.h>
-#include "stm32l4xx_hal_flash.h"
-#include "stm32l4xx_hal_flash_ex.h"
 
-#ifdef USE_FLASH
-/**
-  * @brief  Variables for flash storage
-  */
-static uint16_t data_offset = 0;
-static uint8_t flash_backup_buffer[2048];  // Buffer to hold existing flash data
 
-/**
-  * @brief  Writes data buffer to flash memory
-  * @param  blk_addr: USB block address to write
-  * @param  blk_len: Number of blocks to write
-  * @retval HAL status
-  */
-static HAL_StatusTypeDef write_data_to_flash(uint32_t blk_addr, uint16_t blk_len)
-{
-  HAL_StatusTypeDef ret = HAL_OK;
-  
-  // Calculate which page this block belongs to (4 blocks per 2KB page)
-  uint32_t target_page = blk_addr / 4;
-  
-  // Calculate flash address for this page
-  uint32_t page_addr = USB_FLASH_START_ADDRESS + (target_page * FLASH_PAGE_SIZE);
-  
-  // Ensure page_addr is within user area
-  if (page_addr < FLASH_USER_START_ADDR || page_addr > FLASH_USER_END_ADDR) {
-    return HAL_ERROR;
-  }
-  
-  // Read existing page content into backup buffer
-  memcpy(flash_backup_buffer, (const void*)page_addr, FLASH_PAGE_SIZE);
-
-  // Calculate the start offset within the page
-  uint32_t start_offset = (blk_addr % 4) * STORAGE_BLK_SIZ;
-  uint32_t end_offset = start_offset + (blk_len * STORAGE_BLK_SIZ);
-  
-  // Preserve any existing data in the page that we're not updating
-  for (uint32_t i = 0; i < FLASH_PAGE_SIZE; i++) {
-    if (i < start_offset || i >= end_offset) {
-      USB_storage_buffer[i] = flash_backup_buffer[i];
-    }
-  }
-  
-  // Page number is relative to the bank (Bank 2, page numbers start at 128)
-  uint32_t page_num = 128 + ((page_addr - USB_FLASH_START_ADDRESS) / FLASH_PAGE_SIZE);
-  
-  // Check if block address crosses a page boundary
-  uint32_t current_block_page = target_page;
-  uint32_t end_block_page = (blk_addr + blk_len - 1) / 4;
-  
-  // Erase and program the flash page
-  FLASH_EraseInitTypeDef EraseInitStruct;
-  uint32_t SectorError = 0;
-  
-  HAL_FLASH_Unlock();
-  __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
-  
-  // Set up erase parameters
-  EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-  EraseInitStruct.Banks = FLASH_BANK_2;
-  EraseInitStruct.Page = page_num;
-  EraseInitStruct.NbPages = 1;
-  
-  // Erase the page
-  ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
-  if (SectorError != 0xFFFFFFFF && ret != HAL_OK) {
-    HAL_FLASH_Lock();
-    return HAL_ERROR;
-  }
-
-  // Write 2KB page as 256 consecutive 64-bit doublewords
-  for (uint32_t i = 0; i < 256; i++) {
-    // Get the current address to write to
-    uint32_t current_addr = page_addr + (i * 8);
-    
-    // Check if the memory is fully erased (should be all 0xFF after erase)
-    uint64_t *flash_ptr = (uint64_t*)current_addr;
-    uint64_t current_value = *flash_ptr;
-    
-    // If memory is not properly erased, we need to re-erase
-    if (current_value != 0xFFFFFFFFFFFFFFFFULL) {
-      HAL_FLASH_Lock();
-      
-      // Log the error or take other action as needed
-      // Attempt to erase again
-      HAL_FLASH_Unlock();
-      __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_BSY);
-      ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
-      if (ret != HAL_OK) {
-        HAL_FLASH_Lock();
-        data_offset = 0;
-        return HAL_ERROR;
-      }
-      
-      // Start the write loop again from the beginning
-      i = 0;
-      continue;
-    }
-    
-    // Prepare the data and program the flash
-    uint64_t dword;
-    memcpy(&dword, &USB_storage_buffer[i * 8], 8);
-    ret = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, current_addr, dword);
-    if (ret != HAL_OK) {
-      HAL_FLASH_Lock();
-      data_offset = 0;
-      return HAL_ERROR;
-    }
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_BSY);
-  }
-  HAL_FLASH_Lock();
-  
-  // If we crossed a page boundary, prepare for the next page
-  if (current_block_page != end_block_page) {
-    // Calculate the next block address to start from
-    uint32_t next_page_start_blk = (target_page + 1) * 4;
-    uint32_t blocks_written = next_page_start_blk - blk_addr;
-    uint32_t remaining_blocks = blk_len - blocks_written;
-    
-    if (remaining_blocks > 0) {
-      // Call recursively to handle the next page
-      return write_data_to_flash(next_page_start_blk, remaining_blocks);
-    }
-  }
-  
-  // Reset buffer offset
-  data_offset = 0;
-  
-  return ret;
-}
-#endif
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -381,9 +251,7 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 #endif
 #ifdef USE_RAM
   memcpy(buf, &USB_storage_buffer[blk_addr*STORAGE_BLK_SIZ], blk_len*STORAGE_BLK_SIZ);
-  
 #endif
-  
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -420,32 +288,7 @@ int8_t STORAGE_GetMaxLun_FS(void)
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
-/**
-  * @brief  Process pending flash writes - to be called from main loop
-  * @note   This function checks if there are pending flash writes and processes them
-  * @retval None
-  */
-void USBD_STORAGE_ProcessPendingWrites(void)
-{
-  // Check if we have a pending flash write operation
-  if (flash_write_pending) {
-    // Clear the flag first to prevent reentrance issues
-    flash_write_pending = 0;
-    
-    // Local copies of the volatile variables for safety
-    uint32_t blk_addr = flash_pending_blk_addr;
-    uint16_t blk_len = flash_pending_blk_len;
-    
-    // Process the flash write
-    HAL_StatusTypeDef status = write_data_to_flash(blk_addr, blk_len);
-    
-    // Could add error handling here if needed
-    if (status != HAL_OK) {
-      // Handle error if needed
-      // Maybe set an error flag or retry counter
-    }
-  }
-}
+
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

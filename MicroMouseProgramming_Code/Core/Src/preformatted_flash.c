@@ -1,6 +1,53 @@
 #include <stdint.h>
 #include "preformatted_flash.h"
 
+#ifdef USE_RAM
+uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
+#endif
+#ifdef USE_FLASH
+#include "stm32l4xx_hal.h"
+#include <string.h>
+uint8_t USB_storage_buffer[2*1024];
+static uint16_t usb_storage_buffer_index = 0;
+
+// Example struct, replace with your actual definition
+typedef struct {
+    uint32_t timestamp;
+    uint16_t sensor1;
+    uint16_t sensor2;
+    // ... add your fields ...
+} MicroMouseLog_t;
+
+// Write the buffer to flash at USB_LOG_DATA_ADDRESS
+void write_usb_storage_buffer_to_flash(void) {
+    HAL_FLASH_Unlock();
+    // Erase the page if needed (optional, depends on your use case)
+    FLASH_EraseInitTypeDef eraseInit;
+    uint32_t pageError;
+    eraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
+    eraseInit.Page = (USB_LOG_DATA_ADDRESS - FLASH_BASE) / FLASH_PAGE_SIZE;
+    eraseInit.NbPages = 1;
+    HAL_FLASHEx_Erase(&eraseInit, &pageError);
+
+    // Write buffer to flash
+    for (uint32_t i = 0; i < sizeof(USB_storage_buffer); i += 8) {
+        uint64_t data = *((uint64_t*)&USB_storage_buffer[i]);
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, USB_LOG_DATA_ADDRESS + i, data);
+    }
+    HAL_FLASH_Lock();
+}
+
+// Log a struct to the buffer, write to flash if full
+void log_to_usb_storage_buffer(const MicroMouseLog_t* log) {
+    if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
+        // Buffer full, write to flash
+        write_usb_storage_buffer_to_flash();
+        usb_storage_buffer_index = 0;
+    }
+    memcpy(&USB_storage_buffer[usb_storage_buffer_index], log, sizeof(MicroMouseLog_t));
+    usb_storage_buffer_index += sizeof(MicroMouseLog_t);
+}
+#endif
 
 #ifdef USB_FLASH_72KB_FILE
 
@@ -18616,7 +18663,7 @@ const uint8_t USB_PREFORMATED[USB_PREFORMATED_SIZE] __attribute__((section(".pre
 #ifdef USB_FLASH_256KB_FILE
 
 const uint8_t USB_PREFORMATED[USB_PREFORMATED_SIZE] __attribute__((section(".preformatted_flash"))) = {
-    0xEB, 0x3C, 0x90, 0x4D, 0x53, 0x44, 0x4F, 0x53, 0x35, 0x2E, 0x30, 0x00, 0x02, 0x01, 0x06, 0x00, 
+    0xEB, 0x3C, 0x90, 0x4D, 0x53, 0x44, 0x4F, 0x53, 0x35, 0x2E, 0x30, 0x00, 0x02, 0x02, 0x06, 0x00, 
     0x02, 0x00, 0x02, 0x00, 0x02, 0xF8, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 
     0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x29, 0x6D, 0x9C, 0x01, 0x1E, 0x4E, 0x4F, 0x20, 0x4E, 0x41, 
     0x4D, 0x45, 0x20, 0x20, 0x20, 0x20, 0x46, 0x41, 0x54, 0x31, 0x32, 0x20, 0x20, 0x20, 0x33, 0xC9, 
@@ -38706,7 +38753,6 @@ const uint8_t USB_PREFORMATED[USB_PREFORMATED_SIZE] __attribute__((section(".pre
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 
 }; 
-
 
 #endif
 
