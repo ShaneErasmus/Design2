@@ -106,6 +106,7 @@ Core/Src/stm32l4xx_it.c \
 Core/Src/syscalls.c \
 Core/Src/sysmem.c \
 Core/Src/system_stm32l4xx.c \
+Core/Src/to_compile_flash.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c \

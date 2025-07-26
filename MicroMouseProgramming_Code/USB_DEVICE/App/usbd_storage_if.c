@@ -79,7 +79,7 @@ extern uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #endif
 #ifdef USE_FLASH
 extern uint8_t USB_storage_buffer[];
-extern const uint8_t USB_PREFORMATED[];
+
 #endif
 
 

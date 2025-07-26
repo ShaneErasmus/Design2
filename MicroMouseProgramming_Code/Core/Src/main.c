@@ -37,6 +37,7 @@
 #include "LEDs.h"
 #include "Buttons.h"
 #include "INA219.h"
+#include "preformatted_flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -77,6 +78,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -262,24 +264,6 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
-
-#ifdef USE_FLASH
-extern const uint8_t USB_PREFORMATED[];
-#else
-extern uint8_t USB_PREFORMATED[];
-#endif
-
-BYTE work[4096];
-void initUSB(){
-  // For preformatted image, do not call f_mkfs. FatFS will use USB_PREFORMATED as the filesystem buffer.
-  // No formatting needed; just mount and use.
-}
-
-void refreshUSB(){
-  FatFS_routine();
-  logSelectedVariables();
-}
-
 void initMicroMouse(){
   TIM3->CCR4 = 0;
   TIM3->CCR3 = 0;
@@ -301,28 +285,10 @@ void initMicroMouse(){
   initMotors();
   initLEDs();
   initSW();
-  initUSB();
+  initPreFormatedFlash();
 }
 
-void logSelectedVariables() {
-  FIL file;
-  UINT bytesWritten = 0;
-  char logLine[128];
-  FRESULT res;
-  snprintf(logLine, sizeof(logLine), "%ld,%d,%d,%d,%d,%d,%.3f,%.3f,%.3f,%.3f\r\n",
-    (long)counter,
-    (int)MOTOR_LS,
-    (int)MOTOR_RS,
-    (int)TOF_left_result.Distance,
-    (int)TOF_centre_result.Distance,
-    (int)TOF_right_result.Distance,
-    (IMU_Accel[0]),
-    (IMU_Accel[1]),
-    (IMU_Gyro[0]),
-    (IMU_Gyro[1])
-  );
 
-}
 
 void updateMicroMouse(){
   // Motor Control
@@ -339,7 +305,6 @@ void updateMicroMouse(){
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
-  refreshUSB();
   refreshMotors();
 }
 
@@ -397,11 +362,7 @@ void main(void)
   {
     // Process any pending flash writes from USB storage
     #ifdef USE_FLASH
-    if (flash_write_pending) {
-      __disable_irq(); // Disable interrupts to prevent concurrent access
-      USBD_STORAGE_ProcessPendingWrites();
-      __enable_irq();
-    }
+
     #endif
     
     // Main loop code here
@@ -469,6 +430,41 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief NVIC Configuration.
+  * @retval None
+  */
+static void MX_NVIC_Init(void)
+{
+  /* FLASH_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(FLASH_IRQn);
+  /* RCC_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(RCC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(RCC_IRQn);
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* ADC1_2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+  /* TIM4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM4_IRQn);
+  /* TIM5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  /* TIM6_DAC_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+  /* DMA2_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
+  /* DMA2_Channel7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
 }
 
 /**
@@ -1024,17 +1020,6 @@ void MX_DMA_Init(void)
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA2_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
-  /* DMA2_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
 
 }
 
