@@ -70,7 +70,7 @@ extern DMA_HandleTypeDef hdma_usart1_tx;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-
+uint8_t readyToLog = 0;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -314,7 +314,7 @@ void TIM6_DAC_IRQHandler(void)
 void TIM7_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM7_IRQn 0 */
-
+  readyToLog = 1; // Set the flag to indicate that we are ready to log data
   /* USER CODE END TIM7_IRQn 0 */
   HAL_TIM_IRQHandler(&htim7);
   /* USER CODE BEGIN TIM7_IRQn 1 */

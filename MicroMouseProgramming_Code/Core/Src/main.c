@@ -1,32 +1,3 @@
-// Logging
-extern uint8_t USB_storage_buffer[2*1024];
-extern uint16_t usb_storage_buffer_index;
-extern bool readyToLog;
-
-void initLogs() {
-    // Configure TIM7 for 30Hz
-    configureTimer(30, TIM7);
-    HAL_TIM_Base_Start_IT(&htim7);
-    readyToLog = false;
-}
-
-void refreshLoggedData() {
-    if (!readyToLog) return;
-    MicroMouseLog_t log;
-    log.Distance_Left = TOF_left_result.Distance;
-    log.Distance_Centre = TOF_centre_result.Distance;
-    log.Distance_Right = TOF_right_result.Distance;
-    log.Motor_Left = MOTOR_LS;
-    log.Motor_Right = MOTOR_RS;
-    log.crc = 0; // Optionally calculate CRC here
-    memcpy(&USB_storage_buffer[usb_storage_buffer_index], &log, sizeof(MicroMouseLog_t));
-    usb_storage_buffer_index += sizeof(MicroMouseLog_t);
-    if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
-        Flash_Write_Data(LOG_FILE_DATA, USB_storage_buffer, sizeof(USB_storage_buffer));
-        usb_storage_buffer_index = 0;
-    }
-    readyToLog = false;
-}
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -329,14 +300,29 @@ void updateMicroMouse(){
   refreshADCs();
   refreshScreen();
 
-  // Show sensor data on screen
-  char line1[32], line2[32], line3[32];
-  sprintf(line1, "%.2fL  %.2fC  %.2fR", (float)TOF_left_result.Distance, (float)TOF_centre_result.Distance, (float)TOF_right_result.Distance);
-  sprintf(line2, "X%.2f  Y%.2f  Z%.2f", IMU_Accel[0], IMU_Accel[1], IMU_Accel[2]);
-  sprintf(line3, "%.2fV  %.3fmA %.3f%%", (float)Vbattery/1000.0f, (float)Current/1000.0f, (float)batteryLife);
-  SSD1306_GotoXY(0, 0); SSD1306_Puts(line1, &Font_7x10, 1);
-  SSD1306_GotoXY(0, 12); SSD1306_Puts(line2, &Font_7x10, 1);
-  SSD1306_GotoXY(0, 24); SSD1306_Puts(line3, &Font_7x10, 1);
+  // Show sensor data on screen as integers, each digit explicit
+  int left_mm = (int)(TOF_left_result.Distance);
+  int centre_mm = (int)(TOF_centre_result.Distance);
+  int right_mm = (int)(TOF_right_result.Distance);
+  int accel_x = (int)(IMU_Accel[0] * 1000); // scale to show 2 decimals as int
+  int accel_y = (int)(IMU_Accel[1] * 1000);
+  int accel_z = (int)(IMU_Accel[2] * 1000);
+  int gyro_x = (int)(IMU_Gyro[0] * 1000);
+  int gyro_y = (int)(IMU_Gyro[1] * 1000);
+  int gyro_z = (int)(IMU_Gyro[2] * 1000);
+  int vbatt_mv = (int)Vbattery;
+  int current_ma = (int)Current;
+  int batt_pct = (int)batteryLife;
+
+  // Distance: show 4 digits for each sensor (mm)
+  snprintf(oled_string2, sizeof(oled_string2), "%04dL %04dC %04dR", left_mm, centre_mm, right_mm);
+  // Accel: show only X and Y
+  snprintf(oled_string3, sizeof(oled_string3), "AX%+05d AY%+05d", accel_x, accel_y);
+  // IMU Gyro: show signed 5 digits (xx.xx) for each axis on oled_string4
+
+  snprintf(oled_string4, sizeof(oled_string4), "GX%+05d GY%+05d", gyro_x, gyro_y);
+  // Battery: show 4 digits for mV, 4 for mA, 3 for %%
+  snprintf(oled_string5, sizeof(oled_string5), "%04dmV %+04dmA %03d%%", vbatt_mv, current_ma, batt_pct);
 
   refreshLEDs();
   refreshSWValues();
@@ -353,6 +339,38 @@ void restartI2C(){
   HAL_I2C_DeInit(&hi2c2);
   HAL_I2C_Init(&hi2c2);
 }
+
+// Logging
+extern uint8_t USB_storage_buffer[2*1024];
+extern uint16_t usb_storage_buffer_index;
+extern bool readyToLog;
+
+void initLogs() {
+    // Configure TIM7 for 30Hz
+    configureTimer(30, TIM7);
+    HAL_TIM_Base_Start_IT(&htim7);
+    readyToLog = false;
+}
+
+void refreshLoggedData() {
+  static uint32_t usb_storage_buffer_index = 0;
+    if (!readyToLog) return;
+    MicroMouseLog_t log;
+    log.Distance_Left = TOF_left_result.Distance;
+    log.Distance_Centre = TOF_centre_result.Distance;
+    log.Distance_Right = TOF_right_result.Distance;
+    log.Motor_Left = MOTOR_LS;
+    log.Motor_Right = MOTOR_RS;
+    log.crc = 0; // Optionally calculate CRC here
+    memcpy(&USB_storage_buffer[usb_storage_buffer_index], &log, sizeof(MicroMouseLog_t));
+    usb_storage_buffer_index += sizeof(MicroMouseLog_t);
+    if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
+        Flash_Write_Data(LOG_FILE_DATA, USB_storage_buffer, sizeof(USB_storage_buffer));
+        usb_storage_buffer_index = 0;
+    }
+    readyToLog = false;
+}
+
 
 #ifndef COMPILED_BY_SIMULINK
 
