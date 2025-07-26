@@ -99,12 +99,14 @@ Core/Src/instrumented/syscalls.c \
 Core/Src/instrumented/sysmem.c \
 Core/Src/instrumented/system_stm32l4xx.c \
 Core/Src/main.c \
+Core/Src/preformatted_flash.c \
 Core/Src/stm32l4xx_hal_msp.c \
 Core/Src/stm32l4xx_hal_timebase_tim.c \
 Core/Src/stm32l4xx_it.c \
 Core/Src/syscalls.c \
 Core/Src/sysmem.c \
 Core/Src/system_stm32l4xx.c \
+Core/Src/to_compile_flash.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c \

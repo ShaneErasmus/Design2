@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbd_storage_if.h" // For USB storage interface functions
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -36,6 +37,7 @@
 #include "LEDs.h"
 #include "Buttons.h"
 #include "INA219.h"
+#include "preformatted_flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,8 +61,6 @@ DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
-DMA_HandleTypeDef hdma_i2c2_rx;
-DMA_HandleTypeDef hdma_i2c2_tx;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
@@ -78,6 +78,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -263,17 +264,6 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
-
-BYTE work[4096];
-void initUSB(){
-  FRESULT res = f_mkfs("0:", FM_FAT32 | FM_SFD, 0, work, sizeof(work));
-}
-
-void refreshUSB(){
-  FatFS_routine();
-  logSelectedVariables();
-}
-
 void initMicroMouse(){
   TIM3->CCR4 = 0;
   TIM3->CCR3 = 0;
@@ -295,63 +285,34 @@ void initMicroMouse(){
   initMotors();
   initLEDs();
   initSW();
-  initUSB();
+  initPreFormatedFlash();
 }
 
-void logSelectedVariables() {
-  FIL file;
-  UINT bytesWritten = 0;
-  char logLine[128];
-  FRESULT res;
-  snprintf(logLine, sizeof(logLine), "%ld,%d,%d,%d,%d,%d,%.3f,%.3f,%.3f,%.3f\r\n",
-    (long)counter,
-    (int)MOTOR_LS,
-    (int)MOTOR_RS,
-    (int)TOF_left_result.Distance,
-    (int)TOF_centre_result.Distance,
-    (int)TOF_right_result.Distance,
-    (IMU_Accel[0]),
-    (IMU_Accel[1]),
-    (IMU_Gyro[0]),
-    (IMU_Gyro[1])
-  );
 
-  if (f_open(&file, "STM32.txt", FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_READ | FA_WRITE) != FR_OK) return;
-  if (f_lseek(&file, f_size(&file)) != FR_OK) { f_close(&file); return; }
-  res = f_write(&file, logLine, strlen(logLine), &bytesWritten);
-  if ((bytesWritten > 0) && (res == FR_OK)) {
-    if (f_sync(&file) != FR_OK) { f_close(&file); return; }
-  } else { f_close(&file); return; }
-  f_close(&file);
-}
 
 void updateMicroMouse(){
   // Motor Control
-  if (MOTOR_LS >= 0) {
-    TIM3->CCR3 = abs(MOTOR_LS)*1;
-    TIM3->CCR4 = 0;
-  } else {
-    TIM3->CCR3 = 0;
-    TIM3->CCR4 = abs(MOTOR_LS)*1;
-  }
-  if (MOTOR_RS >= 0) {
-    TIM4->CCR1 = abs(MOTOR_RS)*1;
-    TIM4->CCR2 = 0;
-  } else {
-    TIM4->CCR1 = 0;
-    TIM4->CCR2 = abs(MOTOR_RS)*1;
-  }
+  // TIM4->CCR1 = 0;
+  // TIM4->CCR2 = 0;
+  // TIM3->CCR3 = 0;
+  // TIM3->CCR4 = 0;
 
   // update screen
   refreshADCs();
   refreshScreen();
-  refreshMotors();
   refreshLEDs();
   refreshSWValues();
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
-  refreshUSB();
+  refreshMotors();
+}
+
+void restartI2C(){
+  HAL_I2C_DeInit(&hi2c1);
+  HAL_I2C_Init(&hi2c1);
+  HAL_I2C_DeInit(&hi2c2);
+  HAL_I2C_Init(&hi2c2);
 }
 
 #ifndef COMPILED_BY_SIMULINK
@@ -396,8 +357,14 @@ void main(void)
 
   HAL_UART_Receive_DMA(&huart1,(uint8_t *) &bigBuffer, sizeof(bigBuffer));
 
+
   while (1)
   {
+    // Process any pending flash writes from USB storage
+    #ifdef USE_FLASH
+
+    #endif
+    
     // Main loop code here
     updateMicroMouse();
     // sendToSimulink();
@@ -432,14 +399,18 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.MSIState = RCC_MSI_ON;
+  RCC_OscInitStruct.MSICalibrationValue = 0;
+  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_11;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
-  RCC_OscInitStruct.PLL.PLLN = 20;
+  RCC_OscInitStruct.PLL.PLLN = 10;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
-  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV4;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -459,10 +430,41 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
 
-  /** Enables the Clock Security System
+/**
+  * @brief NVIC Configuration.
+  * @retval None
   */
-  HAL_RCC_EnableCSS();
+static void MX_NVIC_Init(void)
+{
+  /* FLASH_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(FLASH_IRQn);
+  /* RCC_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(RCC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(RCC_IRQn);
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* ADC1_2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(ADC1_2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+  /* TIM4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM4_IRQn);
+  /* TIM5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  /* TIM6_DAC_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+  /* DMA2_Channel6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
+  /* DMA2_Channel7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
 }
 
 /**
@@ -588,7 +590,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00B10E24;
+  hi2c1.Init.Timing = 0x00B00113;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -610,7 +612,7 @@ void MX_I2C1_Init(void)
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 15) != HAL_OK)
   {
     Error_Handler();
   }
@@ -640,7 +642,7 @@ void MX_I2C2_Init(void)
 
   /* USER CODE END I2C2_Init 1 */
   hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00B10E24;
+  hi2c2.Init.Timing = 0x00F01A72;
   hi2c2.Init.OwnAddress1 = 0;
   hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -662,14 +664,10 @@ void MX_I2C2_Init(void)
 
   /** Configure Digital filter
   */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 15) != HAL_OK)
   {
     Error_Handler();
   }
-
-  /** I2C Fast mode Plus enable
-  */
-  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C2);
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
@@ -878,7 +876,7 @@ void MX_TIM4_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
   {
@@ -1022,23 +1020,6 @@ void MX_DMA_Init(void)
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
   __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA1_Channel4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
-  /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
-  /* DMA2_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
-  /* DMA2_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
 
 }
 

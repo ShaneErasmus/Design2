@@ -23,6 +23,8 @@
 
 /* USER CODE BEGIN INCLUDE */
 #include "ff.h"
+#include "main.h"  // For accessing globals
+#include "preformatted_flash.h"  // For accessing preformatted flash data
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +33,10 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+// Flash write operation pending flag - to be checked in main loop
+volatile uint8_t flash_write_pending = 0;
+volatile uint32_t flash_pending_blk_addr = 0;
+volatile uint16_t flash_pending_blk_len = 0;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -67,29 +72,17 @@
 #define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-
-#define USE_RAM
-#define STORAGE_LUN_NBR                  1
-#define STORAGE_BLK_NBR                  72*2  // enter twice the size of the Memory that you want to use
-#define STORAGE_BLK_SIZ                  0x200
-
-#define FLASH_PAGE_SIZE 0x800 // 2KB
-#define ADDR_FLASH_PAGE_128 (0x08000000 + 128 * FLASH_PAGE_SIZE)
-#define ADDR_FLASH_PAGE_255 (0x08000000 + 255 * FLASH_PAGE_SIZE)
-#define FLASH_USER_START_ADDR   ADDR_FLASH_PAGE_128
-#define FLASH_USER_END_ADDR     (ADDR_FLASH_PAGE_255 + FLASH_PAGE_SIZE - 1)
-#define FLASH_ROW_SIZE          32 // 32 doublewords (256 bytes per row)
-
-#define USB_FLASH_START_ADDRESS   0x08040000   
-#define TOTAL_USB_DEVICE_SIZE   ( STORAGE_BLK_NBR * STORAGE_BLK_SIZ )
+#include "preformatted_flash.h"
 
 #ifdef USE_RAM
-uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
+extern uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #endif
 #ifdef USE_FLASH
-uint8_t USB_storage_buffer[2048];
-static uint16_t data_offset = 0;
+extern uint8_t USB_storage_buffer[];
+
 #endif
+
+
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -171,65 +164,8 @@ static int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uin
 static int8_t STORAGE_GetMaxLun_FS(void);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-#include <stdbool.h>
-#include "stm32l4xx_hal_flash.h"
-#include "stm32l4xx_hal_flash_ex.h"
 
-#ifdef USE_FLASH
-/**
-  * @brief  Writes data into the FLASH.
-  * @param  buf: data UBS_storage_buffer.
-  * @param  blk_addr: Logical block address.
-  * @param  blk_len: Blocks number.
-  * @retval HAL_StatusTypeDef
-  */
-uint16_t data_offset;
-uint32_t page_addr = 0;
-uint8_t USB_storage_buffer[2048];
-static HAL_StatusTypeDef write_data_to_flash(uint32_t blk_addr, uint16_t blk_len)
-{
-  HAL_StatusTypeDef ret = HAL_OK;
-  // Fill the buffer with incoming blocks (already done in STORAGE_Write_FS)
-  if (data_offset == 0) {
-    // Calculate page address for this write
-    page_addr = USB_FLASH_START_ADDRESS + ((blk_addr / 4) * 2048);
-    // Ensure page_addr is within user area
-    if (page_addr < FLASH_USER_START_ADDR || page_addr > FLASH_USER_END_ADDR) {
-      return HAL_ERROR;
-    }
-  }
-  data_offset += blk_len * STORAGE_BLK_SIZ;
-  // If buffer is full (2KB), erase and write page
-  if (data_offset >= 2048) {
-    uint32_t page_num = (page_addr - USB_FLASH_START_ADDRESS) / 2048;
 
-    HAL_FLASH_Unlock();
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_ALL_ERRORS);
-    FLASH_EraseInitTypeDef EraseInitStruct;
-    uint32_t SectorError;
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.Banks = FLASH_BANK_2;
-    EraseInitStruct.Page = page_num;
-    EraseInitStruct.NbPages = 1;
-    ret = HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
-
-    // Write 2KB page as 256 consecutive 64-bit doublewords (DOUBLEWORD programming)
-    for (uint32_t i = 0; i < 256; i++) {
-      uint64_t dword;
-      memcpy(&dword, &USB_storage_buffer[i * 8], 8);
-      ret = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, page_addr + i * 8, dword);
-      if (ret != HAL_OK) {
-        data_offset = 0;
-        HAL_FLASH_Lock();
-        return HAL_ERROR;
-      }
-    }
-    HAL_FLASH_Lock();
-    data_offset = 0; // Reset buffer
-  }
-  return ret;
-}
-#endif
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -311,16 +247,11 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 {
   /* USER CODE BEGIN 6 */
 #ifdef USE_FLASH
-  memcpy( buf,
-          (const void *)(USB_FLASH_START_ADDRESS + ( blk_addr * STORAGE_BLK_SIZ )),
-          (blk_len * STORAGE_BLK_SIZ)
-        );
+ memcpy(buf, &USB_PREFORMATED[blk_addr*STORAGE_BLK_SIZ], blk_len*STORAGE_BLK_SIZ);
 #endif
 #ifdef USE_RAM
   memcpy(buf, &USB_storage_buffer[blk_addr*STORAGE_BLK_SIZ], blk_len*STORAGE_BLK_SIZ);
-  
 #endif
-  
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -334,18 +265,11 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 {
   /* USER CODE BEGIN 7 */
 #ifdef USE_FLASH
-  memcpy(&USB_storage_buffer[data_offset], buf, blk_len * STORAGE_BLK_SIZ);
-  data_offset += blk_len * STORAGE_BLK_SIZ;
-  if (data_offset >= 2048) {
-    write_data_to_flash(blk_addr, blk_len);
-    data_offset = 0;
-  }
+
 #endif
 #ifdef USE_RAM
-
   memcpy(&USB_storage_buffer[blk_addr*STORAGE_BLK_SIZ], buf, blk_len*STORAGE_BLK_SIZ);
-
-  #endif
+#endif
   return (USBD_OK);
   /* USER CODE END 7 */
 }
@@ -363,6 +287,8 @@ int8_t STORAGE_GetMaxLun_FS(void)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

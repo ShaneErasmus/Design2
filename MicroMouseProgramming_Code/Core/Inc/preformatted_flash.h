@@ -1,0 +1,80 @@
+#ifndef PREFORMATTED_FLASH_H
+#define PREFORMATTED_FLASH_H
+
+#include <stdint.h>
+#include "main.h"
+
+#undef STORAGE_LUN_NBR
+#undef STORAGE_BLK_NBR
+#undef STORAGE_BLK_SIZ  
+// #define USE_RAM
+#define USE_FLASH
+#define USB_FLASH_256KB_FILE
+
+#define USB_FLASH_START_ADDRESS   0x08040000  
+#define USB_LOG_DATA_ADDRESS      0x08045600  
+#define FLASH_PAGE_SIZE 0x800
+#define TOTAL_USB_DEVICE_SIZE   ( STORAGE_BLK_NBR * STORAGE_BLK_SIZ )
+
+#ifdef USB_FLASH_72KB_FILE
+    #define STORAGE_LUN_NBR                  1
+    #define STORAGE_BLK_NBR                  72*2  // enter twice the size of the Memory that you want to use
+    #define STORAGE_BLK_SIZ                  0x200
+    #define USB_PREFORMATED_SIZE             72*1024
+#endif
+
+#define STM32L476_FLASH_BASE 0x08000000
+#define STM32L476_FLASH_PAGE_SIZE 2048
+#define STM32L476_NUM_PAGES 128
+
+uint32_t GetPage(uint32_t Address);
+void float2Bytes(uint8_t *ftoa_bytes_temp, float float_variable);
+float Bytes2float(uint8_t *ftoa_bytes_temp);
+uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint8_t *Data, uint32_t numBytes);
+void Flash_Read_Data(uint32_t StartPageAddress, uint32_t *RxBuf, uint16_t numberofwords);
+void Flash_Write_NUM(uint32_t StartSectorAddress, float Num);
+float Flash_Read_NUM(uint32_t StartSectorAddress);
+
+#ifdef USB_FLASH_80KB_FILE
+    #define STORAGE_LUN_NBR                  1
+    #define STORAGE_BLK_NBR                  80*2  // enter twice the size of the Memory that you want to use
+    #define STORAGE_BLK_SIZ                  0x200
+    #define USB_PREFORMATED_SIZE             80*1024
+#endif
+
+#ifdef USB_FLASH_128KB_FILE
+    #define STORAGE_LUN_NBR                  1
+    #define STORAGE_BLK_NBR                  128*2  // enter twice the size of the Memory that you want to use
+    #define STORAGE_BLK_SIZ                  0x200
+    #define USB_PREFORMATED_SIZE             128*1024
+#endif
+
+#ifdef USB_FLASH_256KB_FILE
+    #define STORAGE_LUN_NBR                  1
+    #define STORAGE_BLK_NBR                  256*2  // enter twice the size of the Memory that you want to use
+    #define STORAGE_BLK_SIZ                  0x200
+    #define USB_PREFORMATED_SIZE             256*1024
+
+    #define LOG_FILE_START                   0x08045C00
+    #define LOG_FILE_UID                     0x08045C17
+    #define LOG_FILE_DATA                    0x08045C25
+#endif
+
+#define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
+typedef struct {
+    uint32_t timestamp;
+    uint16_t sensor1;
+    uint16_t sensor2;
+    // ... add your fields ...
+} MicroMouseLog_t;
+
+// Function to get a pointer to the preformatted data
+uint8_t* get_preformatted_data(void);
+
+// Function to get the size of the preformatted data
+uint32_t get_preformatted_data_size(void);
+
+// Initialize preformatted flash and update UID
+void initPreFormatedFlash(void);
+
+#endif /* PREFORMATTED_FLASH_H */

@@ -19,6 +19,7 @@
 #include "SSD1306.h"
 #include "stm32l4xx_hal.h" // Change it for your requirements.
 #include "string.h"
+#include "main.h"
 
 
 extern I2C_HandleTypeDef hi2c2;
@@ -409,7 +410,7 @@ uint8_t SSD1306_Init(void) {
 	SSD1306_I2C_Init();
 	
 	/* Check if LCD connected to I2C */
-	if (HAL_I2C_IsDeviceReady(SSD1306_I2C, SSD1306_I2C_ADDR, 1, 20000) != HAL_OK) {
+	if (HAL_I2C_IsDeviceReady(SSD1306_I2C, SSD1306_I2C_ADDR, 1, I2C_TIMEOUT) != HAL_OK) {
 		/* Return false */
 		return 0;
 	}
@@ -1003,7 +1004,7 @@ dt[0] = reg;
 uint8_t i;
 for(i = 0; i < count; i++)
 dt[i+1] = data[i];
-HAL_I2C_Master_Transmit(SSD1306_I2C, address, dt, count+1, 10);
+HAL_I2C_Master_Transmit(SSD1306_I2C, address, dt, count+1,I2C_TIMEOUT);
 }
 
 
@@ -1011,7 +1012,7 @@ void SSD1306_I2C_Write(uint8_t address, uint8_t reg, uint8_t data) {
 	uint8_t dt[2];
 	dt[0] = reg;
 	dt[1] = data;
-	HAL_I2C_Master_Transmit(SSD1306_I2C, address, dt, 2, 10);
+	HAL_I2C_Master_Transmit(SSD1306_I2C, address, dt, 2,I2C_TIMEOUT);
 }
 
 void initScreen(){
