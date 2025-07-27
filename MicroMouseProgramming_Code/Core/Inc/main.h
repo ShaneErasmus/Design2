@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define I2C_TIMEOUT 20
+#define I2C_TIMEOUT 30
+#define USB_BUFFER_SIZE (2*1024)
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/

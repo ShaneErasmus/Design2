@@ -69,7 +69,7 @@ extern DMA_HandleTypeDef hdma_usart1_tx;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
-uint8_t readyToLog = 0;
+extern uint8_t readyToLog;
 /* USER CODE END EV */
 
 /******************************************************************************/

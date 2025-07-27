@@ -128,7 +128,7 @@ extern uint8_t SW[2];
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
-
+uint8_t State = 1;
 // functions
 
 void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
@@ -268,9 +268,13 @@ void restartI2C(){
 }
 
 // Logging
-extern uint8_t USB_storage_buffer[2*1024];
-extern uint16_t usb_storage_buffer_index;
-extern bool readyToLog;
+
+
+
+uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+uint16_t usb_storage_buffer_index[2] = {0, 0};
+uint8_t active_usb_buffer = 0;
+uint8_t readyToLog;
 
 #define LOG_FLASH_START_ADDR 0x08040000
 #define LOG_FLASH_PAGE_SIZE  0x800
@@ -278,37 +282,80 @@ static uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
 
 void initLogs() {
     // Configure TIM7 for 30Hz
-    configureTimer(30, TIM7);
+    configureTimer(50, TIM7);
     HAL_TIM_Base_Start_IT(&htim7);
     readyToLog = false;
 }
 
 void refreshLoggedData() {
-    static uint32_t usb_storage_buffer_index = 0;
-    static bool uid_initialized = false;
+
+    static bool first_buffer = true;
+    static bool logging_enabled = false;
     if (!readyToLog) return;
-    if (!uid_initialized) {
-        // Place UID at the start of the buffer
-        uint8_t *uid_ptr = (uint8_t*)0x1FFF7590; // STM32 UID base address
-        memcpy(USB_storage_buffer, uid_ptr, 12);
-        usb_storage_buffer_index = 12;
-        uid_initialized = true;
+    // Enable logging if any button is pressed (active low)
+    if (!logging_enabled && (SW[0] != SW[1])) {
+        logging_enabled = true;
     }
+    if (!logging_enabled) return;
+
+    if (first_buffer) {
+        // Place UID only at the start of the very first buffer
+        uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
+        memcpy(USB_storage_buffer[active_usb_buffer], uid_ptr, 12);
+        usb_storage_buffer_index[active_usb_buffer] = 12;
+        first_buffer = false;
+
+        static FLASH_EraseInitTypeDef EraseInitStruct;
+        uint32_t PAGEError;
+        HAL_FLASH_Unlock();
+        EraseInitStruct.TypeErase = FLASH_TYPEERASE_MASSERASE;
+        EraseInitStruct.Banks = FLASH_BANK_2;
+        if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK){
+          return HAL_FLASH_GetError();
+        }
+        HAL_FLASH_Lock();
+    }
+
     MicroMouseLog_t log;
-    log.state = 0x01; // Set state to 0 or any other value as needed
-    log.Distance_Left = 0x12345678;
-    log.Distance_Centre = 0x12345678;
-    log.Distance_Right = 0x12345678;
-    log.Motor_Left = 0xAB;
-    log.Motor_Right = 0xCD;
-    log.crc = 0xABCDEF12; // Optionally calculate CRC here
-    memcpy(&USB_storage_buffer[usb_storage_buffer_index], &log, sizeof(MicroMouseLog_t));
-    usb_storage_buffer_index += sizeof(MicroMouseLog_t);
-    if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
-        // Write log data to flash at current address
-        Flash_Write_Data(log_flash_write_addr, USB_storage_buffer, sizeof(USB_storage_buffer));
+    log.state = State;
+    log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
+    log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
+    log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
+    log.Motor_Left = MOTOR_LS;
+    log.Motor_Right = MOTOR_RS;
+    // Add IMU accel x, accel y, and gyro z
+    log.IMU_Accel_X = (uint16_t)(IMU_Accel[0] * 1000.0f);
+    log.IMU_Accel_Y = (uint16_t)(IMU_Accel[1] * 1000.0f);
+    log.IMU_Gyro_Z = (uint16_t)(IMU_Gyro[2] * 1000.0f);
+    // Check if flash at 0x807FFFF is not 0xFF, stop logging and indicate full
+    if (*((uint8_t*)0x807FFFF) != 0xFF) {
+        logging_enabled = false;
+        LED[0] = 1;
+        LED[1] = 1;
+        LED[2] = 1;
+        MOTOR_LS = 0;
+        MOTOR_RS = 0;
+        snprintf(oled_string2, sizeof(oled_string2), "MicroMouseLog Full");
+        refreshScreen();
+        return;
+    }
+    // Calculate CRC as bitwise AND of UID, motors, and state
+    // Use last 3 bytes of UID and bitwise AND with Motor_Left, Motor_Right, and state, each shifted to fill 24 bits
+    uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
+    uint32_t uid24 = (uid_ptr[9] << 16) | (uid_ptr[10] << 8) | uid_ptr[11];
+    uint32_t log24 = ((uint8_t)log.Motor_Left << 16) | ((uint8_t)log.Motor_Right << 8) | ((uint8_t)log.state);
+    log.crc = uid24 & log24;
+    memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], &log, sizeof(MicroMouseLog_t));
+    usb_storage_buffer_index[active_usb_buffer] += sizeof(log);
+
+    if (usb_storage_buffer_index[active_usb_buffer] + sizeof(log) > USB_BUFFER_SIZE) {
+        // Offload current buffer to flash
+        Flash_Write_Data(log_flash_write_addr, USB_storage_buffer[active_usb_buffer], USB_BUFFER_SIZE);
         log_flash_write_addr += LOG_FLASH_PAGE_SIZE;
-        usb_storage_buffer_index = 12; // Only skip UID for next buffer, do not re-initialize UID
+        // Switch buffer
+        active_usb_buffer ^= 1;
+        usb_storage_buffer_index[active_usb_buffer] = 0;
+        first_buffer = false;
     }
     readyToLog = false;
 }
@@ -367,7 +414,7 @@ void updateMicroMouse(){
   int current_ma = (int)Current;
   int batt_pct = (int)batteryLife;
 
-  if (simulink_talking){
+  if (!simulink_talking){
     // Distance: show 4 digits for each sensor (mm)
     snprintf(oled_string2, sizeof(oled_string2), "%04dL %04dC %04dR", left_mm, centre_mm, right_mm);
     // Accel: show only X and Y

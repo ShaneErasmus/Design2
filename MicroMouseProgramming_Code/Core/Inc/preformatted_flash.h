@@ -71,9 +71,12 @@ typedef struct {
     int8_t Motor_Left;
     int8_t Motor_Right;
     uint8_t crc; // CRC for data integrity
-    uint32_t Distance_Left;
-    uint32_t Distance_Centre;
-    uint32_t Distance_Right;
+    uint16_t Distance_Left;
+    uint16_t Distance_Centre;
+    uint16_t Distance_Right;
+    uint16_t IMU_Accel_X;
+    uint16_t IMU_Accel_Y;
+    uint16_t IMU_Gyro_Z;
     // Add more fields as needed
 } MicroMouseLog_t;
 
