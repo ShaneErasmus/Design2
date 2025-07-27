@@ -1,6 +1,6 @@
 import sys
 
-def trim_bin(input_file, output_file, offset=0x00040000):
+def trim_bin(input_file, output_file, offset=0x00000008):
     with open(input_file, 'rb') as f:
         f.seek(offset)
         data = f.read()
