@@ -18,12 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "fatfs.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "usbd_storage_if.h" // For USB storage interface functions
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -275,7 +272,7 @@ extern uint8_t USB_storage_buffer[2*1024];
 extern uint16_t usb_storage_buffer_index;
 extern bool readyToLog;
 
-#define LOG_FLASH_START_ADDR 0x08045800
+#define LOG_FLASH_START_ADDR 0x08040000
 #define LOG_FLASH_PAGE_SIZE  0x800
 static uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
 
@@ -288,7 +285,15 @@ void initLogs() {
 
 void refreshLoggedData() {
     static uint32_t usb_storage_buffer_index = 0;
+    static bool uid_initialized = false;
     if (!readyToLog) return;
+    if (!uid_initialized) {
+        // Place UID at the start of the buffer
+        uint8_t *uid_ptr = (uint8_t*)0x1FFF7590; // STM32 UID base address
+        memcpy(USB_storage_buffer, uid_ptr, 12);
+        usb_storage_buffer_index = 12;
+        uid_initialized = true;
+    }
     MicroMouseLog_t log;
     log.state = 0x01; // Set state to 0 or any other value as needed
     log.Distance_Left = 0x12345678;
@@ -300,17 +305,10 @@ void refreshLoggedData() {
     memcpy(&USB_storage_buffer[usb_storage_buffer_index], &log, sizeof(MicroMouseLog_t));
     usb_storage_buffer_index += sizeof(MicroMouseLog_t);
     if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
-        // Fill USB_storage_buffer with flash contents from 0x8045800 to LOG_FILE_DATA before first write
-        if (log_flash_write_addr == LOG_FLASH_START_ADDR) {
-            uint32_t fill_size = LOG_FILE_DATA - LOG_FLASH_START_ADDR;
-            if (fill_size > 0 && fill_size <= sizeof(USB_storage_buffer)) {
-                memcpy(USB_storage_buffer, (void*)LOG_FLASH_START_ADDR, fill_size);
-            }
-        }
         // Write log data to flash at current address
         Flash_Write_Data(log_flash_write_addr, USB_storage_buffer, sizeof(USB_storage_buffer));
         log_flash_write_addr += LOG_FLASH_PAGE_SIZE;
-        usb_storage_buffer_index = 0;
+        usb_storage_buffer_index = 12; // Only skip UID for next buffer, do not re-initialize UID
     }
     readyToLog = false;
 }
@@ -339,7 +337,6 @@ void initMicroMouse(){
   initMotors();
   initLEDs();
   initSW();
-  initPreFormatedFlash();
   initLogs();
 }
 
@@ -420,8 +417,7 @@ void main(void)
   MX_TIM5_Init();
   MX_TIM7_Init();
   MX_USART1_UART_Init();
-  MX_USB_DEVICE_Init();
-  MX_FATFS_Init();
+
 
   initMicroMouse();
   
@@ -475,12 +471,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.MSIState = RCC_MSI_ON;
-  RCC_OscInitStruct.MSICalibrationValue = 0;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_11;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
@@ -1170,10 +1163,12 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PA0 PA1 PA2 PA4
                            PA5 PA6 PA7 PA8
-                           PA9 PA10 PA15 */
+                           PA9 PA10 PA11 PA12
+                           PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
                           |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
-                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15;
+                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
+                          |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);

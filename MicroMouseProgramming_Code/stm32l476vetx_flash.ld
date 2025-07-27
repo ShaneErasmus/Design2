@@ -63,8 +63,7 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 96K
 RAM2 (xrw)      : ORIGIN = 0x10000000, LENGTH = 32K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 256K
-Prog_00 (rx)      : ORIGIN = 0x8040000, LENGTH = 256K
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 512K
 }
 
 /* Define output sections */
@@ -146,7 +145,7 @@ SECTIONS
 	. = ALIGN(8);
   } >FLASH
 
-.data_Prog_00 :
+/* .data_Prog_00 :
 
 {
 
@@ -156,7 +155,7 @@ KEEP(*(.data_Prog_00))
 
 . = ALIGN(4);
 
-} >Prog_00
+} >Prog_00 */
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);

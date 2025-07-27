@@ -5,11 +5,6 @@
 #include "stm32l4xx_hal.h"
 #include <string.h>
 
-// Utility: Get flash page start address for STM32L476VE (FLASH_PAGE_SIZE = 2048)
-#define STM32L476_FLASH_BASE 0x08000000
-#define STM32L476_FLASH_PAGE_SIZE 2048
-#define STM32L476_NUM_PAGES 383
-
 uint32_t GetPage(uint32_t Address)
 {
     for (int indx = 0; indx < STM32L476_NUM_PAGES; indx++)
