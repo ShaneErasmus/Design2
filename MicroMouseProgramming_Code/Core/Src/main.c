@@ -75,8 +75,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_TIM7_Init(void);
-static void MX_NVIC_Init(void);
+ void MX_NVIC_Init(void); 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -278,7 +277,8 @@ uint8_t readyToLog;
 
 #define LOG_FLASH_START_ADDR 0x08040000
 #define LOG_FLASH_PAGE_SIZE  0x800
-static uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
+ uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
+ 
 
 void initLogs() {
     // Configure TIM7 for 30Hz
@@ -289,8 +289,10 @@ void initLogs() {
 
 void refreshLoggedData() {
 
-    static bool first_buffer = true;
-    static bool logging_enabled = false;
+     bool first_buffer = true;
+ 
+     bool logging_enabled = false;
+ 
     if (!readyToLog) return;
     // Enable logging if any button is pressed (active low)
     if (!logging_enabled && (SW[0] != SW[1])) {
@@ -305,7 +307,8 @@ void refreshLoggedData() {
         usb_storage_buffer_index[active_usb_buffer] = 12;
         first_buffer = false;
 
-        static FLASH_EraseInitTypeDef EraseInitStruct;
+         FLASH_EraseInitTypeDef EraseInitStruct;
+ 
         uint32_t PAGEError;
         HAL_FLASH_Unlock();
         EraseInitStruct.TypeErase = FLASH_TYPEERASE_MASSERASE;
@@ -552,7 +555,7 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
-static void MX_NVIC_Init(void)
+ void MX_NVIC_Init(void) 
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
@@ -703,7 +706,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00B00113;
+  hi2c1.Init.Timing = 0x00F01A72;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -729,10 +732,6 @@ void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
-
-  /** I2C Fast mode Plus enable
-  */
-  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C1);
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
@@ -1056,7 +1055,7 @@ void MX_TIM5_Init(void)
   * @param None
   * @retval None
   */
-static void MX_TIM7_Init(void)
+void MX_TIM7_Init(void)
 {
 
   /* USER CODE BEGIN TIM7_Init 0 */
@@ -1330,3 +1329,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+/*SimulinkGeneratedCode*/

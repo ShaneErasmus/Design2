@@ -64,6 +64,7 @@ void MX_TIM1_Init(void);
 void MX_TIM5_Init(void);
 void MX_ADC1_Init(void);
 void MX_I2C1_Init(void);
+void MX_TIM7_Init(void);
 
 /* USER CODE BEGIN EFP */
 void initMicroMouse(void);
