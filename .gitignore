@@ -1,4 +1,3 @@
-.vscode/
 slprj/
 *.slxc
 debug.log
@@ -12,3 +11,7 @@ MicroMouse_Deploy.bin
 MicroMouse_Deploy.elf
 MicroMouse_Deploy.hex
 MicroMouse_Deploy_ert_rtw/
+.vscode/settings.json
+.vscode/c_cpp_properties.json
+MicroMouseProgramming_Code/.vscode/c_cpp_properties.json
+MicroMouseProgramming_Code/.vscode/settings.json
