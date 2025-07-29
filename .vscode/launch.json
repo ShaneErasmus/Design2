@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Debug MicroMouse_Deploy.elf",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "stlink",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/MicroMouse_Deploy.elf",
+            "device": "STM32L476VETx",
+            "svdFile": "",
+            "cpu": "cortex-m4",
+            "preLaunchTask": "",
+            "postRestartCommands": [],
+            "showDevDebugOutput": "none",
+            "searchDir": [
+                "${workspaceFolder}/MicroMouse_Deploy_ert_rtw",
+                "${workspaceFolder}/MicroMouse_Deploy_ert_rtw/instrumented",
+            ]
+        }
+    ]
+}
