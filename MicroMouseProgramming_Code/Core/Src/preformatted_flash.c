@@ -4,11 +4,15 @@
 #include "preformatted_flash.h"
 #include "stm32l4xx_hal.h"
 #include <string.h>
+#include "main.h"
 
-// Utility: Get flash page start address for STM32L476VE (FLASH_PAGE_SIZE = 2048)
-#define STM32L476_FLASH_BASE 0x08000000
-#define STM32L476_FLASH_PAGE_SIZE 2048
-#define STM32L476_NUM_PAGES 383
+uint8_t State = 1;
+
+uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+uint16_t usb_storage_buffer_index[2] = {0, 0};
+uint8_t active_usb_buffer = 0;
+uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
+uint8_t readyToLog;
 
 uint32_t GetPage(uint32_t Address)
 {
@@ -50,17 +54,10 @@ float Bytes2float(uint8_t *ftoa_bytes_temp)
 
 uint32_t Flash_Write_Data(uint32_t StartPageAddress, uint8_t *Data, uint32_t numBytes)
 {
-    static FLASH_EraseInitTypeDef EraseInitStruct;
-    uint32_t PAGEError;
-    HAL_FLASH_Unlock();
     uint32_t StartPage = GetPage(StartPageAddress);
     uint32_t EndPageAddress = StartPageAddress + numBytes;
     uint32_t EndPage = GetPage(EndPageAddress);
-    EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-    EraseInitStruct.Page = (((StartPage - FLASH_BASE) / FLASH_PAGE_SIZE) - 127)+256-1;
-    EraseInitStruct.NbPages = ((EndPage - StartPage) / FLASH_PAGE_SIZE) + 1;
-    if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
-        return HAL_FLASH_GetError();
+    HAL_FLASH_Unlock();
     for (uint32_t i = 0; i < numBytes; i += 8)
     {
         uint64_t data64 = 0;
@@ -101,9 +98,7 @@ uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #ifdef USE_FLASH
 
 uint8_t UID[12] = {0};
-uint8_t USB_storage_buffer[2*1024];
-uint8_t USB_storage_buffer_2[2*1024];
-static uint16_t usb_storage_buffer_index = 0;
+
 
 #define UID_BASE 0x1FFF7590
 
@@ -113,19 +108,19 @@ void initPreFormatedFlash(void) {
 
     // Read flash page containing LOG_FILE_UID into buffer
     uint32_t page_start = GetPage(LOG_FILE_UID);
-    memcpy(USB_storage_buffer, (uint8_t*)page_start, FLASH_PAGE_SIZE);
+    memcpy(USB_storage_buffer[active_usb_buffer], (uint8_t*)page_start, FLASH_PAGE_SIZE);
 
     // Find and replace 123456789ABC with UID
     uint8_t pattern[12] = "123456789ABC";
     for (uint32_t i = 0; i <= FLASH_PAGE_SIZE - 12; ++i) {
-        if (memcmp(&USB_storage_buffer[i], pattern, 12) == 0) {
-            memcpy(&USB_storage_buffer[i], UID, 12);
+        if (memcmp(&USB_storage_buffer[active_usb_buffer][i], pattern, 12) == 0) {
+            memcpy(&USB_storage_buffer[active_usb_buffer][i], UID, 12);
             break;
         }
     }
 
     // Write buffer back to flash using new utility
-    Flash_Write_Data(page_start, (uint8_t*)USB_storage_buffer, FLASH_PAGE_SIZE);
+    Flash_Write_Data(page_start, (uint8_t*)USB_storage_buffer[active_usb_buffer], FLASH_PAGE_SIZE);
 }
 
 // Write the buffer to flash at USB_LOG_DATA_ADDRESS
@@ -140,8 +135,9 @@ void write_usb_storage_buffer_to_flash(void) {
     HAL_FLASHEx_Erase(&eraseInit, &pageError);
 
     // Write buffer to flash
-    for (uint32_t i = 0; i < sizeof(USB_storage_buffer); i += 8) {
-        uint64_t data = *((uint64_t*)&USB_storage_buffer[i]);
+    for (uint32_t i = 0; i < USB_BUFFER_SIZE; i += 8) {
+        uint64_t data = 0;
+        memcpy(&data, &USB_storage_buffer[active_usb_buffer][i], 8);
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, USB_LOG_DATA_ADDRESS + i, data);
     }
     HAL_FLASH_Lock();
@@ -149,13 +145,13 @@ void write_usb_storage_buffer_to_flash(void) {
 
 // Log a struct to the buffer, write to flash if full
 void log_to_usb_storage_buffer(const MicroMouseLog_t* log) {
-    if (usb_storage_buffer_index + sizeof(MicroMouseLog_t) > sizeof(USB_storage_buffer)) {
+    if (usb_storage_buffer_index[active_usb_buffer] + sizeof(MicroMouseLog_t) > USB_BUFFER_SIZE) {
         // Buffer full, write to flash
         write_usb_storage_buffer_to_flash();
-        usb_storage_buffer_index = 0;
+        usb_storage_buffer_index[active_usb_buffer] = 0;
     }
-    memcpy(&USB_storage_buffer[usb_storage_buffer_index], log, sizeof(MicroMouseLog_t));
-    usb_storage_buffer_index += sizeof(MicroMouseLog_t);
+    memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], log, sizeof(MicroMouseLog_t));
+    usb_storage_buffer_index[active_usb_buffer] += sizeof(MicroMouseLog_t);
 }
 #endif
 

@@ -12,9 +12,14 @@
 #define USB_FLASH_256KB_FILE
 
 #define USB_FLASH_START_ADDRESS   0x08040000  
-#define USB_LOG_DATA_ADDRESS      0x08045600  
+#define USB_LOG_DATA_ADDRESS      0x08040000  
 #define FLASH_PAGE_SIZE 0x800
 #define TOTAL_USB_DEVICE_SIZE   ( STORAGE_BLK_NBR * STORAGE_BLK_SIZ )
+
+// Utility: Get flash page start address for STM32L476VE (FLASH_PAGE_SIZE = 2048)
+#define STM32L476_FLASH_BASE 0x08000000
+#define STM32L476_FLASH_PAGE_SIZE 2048
+#define STM32L476_NUM_PAGES 383
 
 #ifdef USB_FLASH_72KB_FILE
     #define STORAGE_LUN_NBR                  1
@@ -60,12 +65,23 @@ float Flash_Read_NUM(uint32_t StartSectorAddress);
     #define LOG_FILE_DATA                    0x08045C25
 #endif
 
+#define USB_BUFFER_SIZE (2*1024)
+#define LOG_FLASH_START_ADDR 0x08040000
+#define LOG_FLASH_PAGE_SIZE  0x800
+
 #define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
 typedef struct {
-    uint32_t timestamp;
-    uint16_t sensor1;
-    uint16_t sensor2;
-    // ... add your fields ...
+    uint8_t state;
+    int8_t Motor_Left;
+    int8_t Motor_Right;
+    uint8_t crc; // CRC for data integrity
+    uint16_t Distance_Left;
+    uint16_t Distance_Centre;
+    uint16_t Distance_Right;
+    uint16_t IMU_Accel_X;
+    uint16_t IMU_Accel_Y;
+    uint16_t IMU_Gyro_Z;
+    // Add more fields as needed
 } MicroMouseLog_t;
 
 // Function to get a pointer to the preformatted data

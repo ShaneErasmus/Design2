@@ -30,10 +30,10 @@ extern I2C_HandleTypeDef hi2c2;
 #endif
 
 char oled_string1[18] = "UCT MICROMOUSE '25";
-char oled_string2[18] = "------------------";
-char oled_string3[18] = "HELLOOOOOOOOOOOOOO";
-char oled_string4[18] = "WOOOOOOOOOOOOOORLD";
-char oled_string5[18] = "------------------";
+char oled_string2[18] = "                  ";
+char oled_string3[18] = "                  ";
+char oled_string4[18] = "                  ";
+char oled_string5[18] = "                  ";
 
 /* Write command */
 #define SSD1306_WRITECOMMAND(command)      SSD1306_I2C_Write(SSD1306_I2C_ADDR, 0x00, (command))

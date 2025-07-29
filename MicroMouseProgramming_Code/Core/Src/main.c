@@ -18,12 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "fatfs.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "usbd_storage_if.h" // For USB storage interface functions
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
@@ -66,7 +63,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
-TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_rx;
@@ -78,7 +75,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-static void MX_NVIC_Init(void);
+ void MX_NVIC_Init(void); 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -130,9 +127,7 @@ extern uint8_t SW[2];
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
-
-uint8_t readyToGetToF = 0;
-
+extern uint8_t State;
 // functions
 
 void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
@@ -160,8 +155,6 @@ void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
     // Reload the timer settings to apply the changes immediately
     tim->EGR = TIM_EGR_UG;  // Generate an update event to reload PSC and ARR
 }
-
-
 
 void sendToSimulink(){
     HAL_UART_Transmit(&huart1, (uint8_t *) "J_A"           ,3 , HAL_MAX_DELAY);
@@ -264,6 +257,126 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
     return found;
 }
 
+void restartI2C(){
+  TIM3->CCR4 = 0;
+  TIM3->CCR3 = 0;
+  TIM4->CCR2 = 0;
+  TIM4->CCR1 = 0;
+  HAL_I2C_DeInit(&hi2c1);
+  HAL_I2C_Init(&hi2c1);
+  HAL_I2C_DeInit(&hi2c2);
+  HAL_I2C_Init(&hi2c2);
+}
+
+// Logging
+
+
+
+extern uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+extern uint16_t usb_storage_buffer_index[2];
+extern uint8_t active_usb_buffer;
+extern uint8_t readyToLog;
+extern uint32_t log_flash_write_addr;
+uint8_t log_time_counter = 0;
+ 
+
+
+void initLogs() {
+    // Configure TIM7 for 30Hz
+    configureTimer(50, TIM7);
+    HAL_TIM_Base_Start_IT(&htim7);
+    readyToLog = false;
+    HAL_DBGMCU_EnableDBGSleepMode();
+    HAL_DBGMCU_EnableDBGStandbyMode();
+    HAL_DBGMCU_EnableDBGStopMode();
+
+}
+
+bool first_buffer = true;
+bool logging_enabled = false;
+void refreshLoggedData() {
+      #ifdef COMPILED_BY_SIMULINK
+      log_time_counter++;
+      if (log_time_counter >= 100/25) { // 1ms/Hz
+        readyToLog = true;
+        log_time_counter = 0;
+      } 
+      #endif
+
+    if (!readyToLog) return;
+    readyToLog = false;
+    // Enable logging if any button is pressed (active low)
+    if (!logging_enabled && (SW[0] != SW[1])) {
+        logging_enabled = true;
+        HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port , MOTOR_EN_Pin , GPIO_PIN_SET);
+    }
+    if (!logging_enabled) return;
+
+    if (first_buffer) {
+        // Place UID only at the start of the very first buffer
+        uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
+        memcpy(USB_storage_buffer[active_usb_buffer], uid_ptr, 12);
+        usb_storage_buffer_index[active_usb_buffer] = 12;
+        first_buffer = false;
+
+        FLASH_EraseInitTypeDef EraseInitStruct;
+ 
+        uint32_t PAGEError;
+        HAL_FLASH_Unlock();
+        EraseInitStruct.TypeErase = FLASH_TYPEERASE_MASSERASE;
+        EraseInitStruct.Banks = FLASH_BANK_2;
+        if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK){
+          return HAL_FLASH_GetError();
+        }
+        HAL_FLASH_Lock();
+    }
+
+    MicroMouseLog_t log;
+    log.state = State;
+    log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
+    log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
+    log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
+    log.Motor_Left = MOTOR_LS;
+    log.Motor_Right = MOTOR_RS;
+    // Add IMU accel x, accel y, and gyro z
+    log.IMU_Accel_X = (uint16_t)(IMU_Accel[0] * 1000.0f);
+    log.IMU_Accel_Y = (uint16_t)(IMU_Accel[1] * 1000.0f);
+    log.IMU_Gyro_Z = (uint16_t)(IMU_Gyro[2] * 1000.0f);
+    // Check if flash at 0x807FFFF is not 0xFF, stop logging and indicate full
+    if (*((uint8_t*)0x807FFFF) != 0xFF) {
+        logging_enabled = false;
+        LED[0] = 1;
+        LED[1] = 1;
+        LED[2] = 1;
+        MOTOR_LS = 0;
+        MOTOR_RS = 0;
+        snprintf(oled_string2, sizeof(oled_string2), "MicroMouseLog Full");
+        refreshScreen();
+        return;
+    }
+    // Calculate CRC as bitwise AND of UID, motors, and state
+    // Use last 3 bytes of UID and bitwise AND with Motor_Left, Motor_Right, and state, each shifted to fill 24 bits
+    uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
+    uint32_t uid24 = (uid_ptr[9] << 16) | (uid_ptr[10] << 8) | uid_ptr[11];
+    uint32_t log24 = ((uint8_t)log.Motor_Left << 16) | ((uint8_t)log.Motor_Right << 8) | ((uint8_t)log.state);
+    log.crc = uid24 & log24;
+    memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], &log, sizeof(MicroMouseLog_t));
+    usb_storage_buffer_index[active_usb_buffer] += sizeof(log);
+
+    if (usb_storage_buffer_index[active_usb_buffer] + sizeof(log) > USB_BUFFER_SIZE) {
+        // Offload current buffer to flash
+        Flash_Write_Data(log_flash_write_addr, USB_storage_buffer[active_usb_buffer], USB_BUFFER_SIZE);
+        log_flash_write_addr += LOG_FLASH_PAGE_SIZE;
+        // Switch buffer
+        active_usb_buffer ^= 1;
+        usb_storage_buffer_index[active_usb_buffer] = 0;
+        first_buffer = false;
+    }
+    readyToLog = false;
+}
+
+#ifndef COMPILED_BY_SIMULINK
+
 void initMicroMouse(){
   TIM3->CCR4 = 0;
   TIM3->CCR3 = 0;
@@ -285,10 +398,10 @@ void initMicroMouse(){
   initMotors();
   initLEDs();
   initSW();
-  initPreFormatedFlash();
+  initLogs();
 }
 
-
+bool simulink_talking = false;
 
 void updateMicroMouse(){
   // Motor Control
@@ -300,25 +413,46 @@ void updateMicroMouse(){
   // update screen
   refreshADCs();
   refreshScreen();
+
+  // Show sensor data on screen as integers, each digit explicit
+  int left_mm = (int)(TOF_left_result.Distance);
+  int centre_mm = (int)(TOF_centre_result.Distance);
+  int right_mm = (int)(TOF_right_result.Distance);
+  int accel_x = (int)(IMU_Accel[0] * 1000); // scale to show 2 decimals as int
+  int accel_y = (int)(IMU_Accel[1] * 1000);
+  int accel_z = (int)(IMU_Accel[2] * 1000);
+  int gyro_x = (int)(IMU_Gyro[0] * 1000);
+  int gyro_y = (int)(IMU_Gyro[1] * 1000);
+  int gyro_z = (int)(IMU_Gyro[2] * 1000);
+  int vbatt_mv = (int)Vbattery;
+  int current_ma = (int)Current;
+  int batt_pct = (int)batteryLife;
+
+  if (!simulink_talking){
+    // Distance: show 4 digits for each sensor (mm)
+    snprintf(oled_string2, sizeof(oled_string2), "%04dL %04dC %04dR", left_mm, centre_mm, right_mm);
+    // Accel: show only X and Y
+    snprintf(oled_string3, sizeof(oled_string3), "AX%+05d AY%+05d", accel_x, accel_y);
+    // IMU Gyro: show signed 5 digits (xx.xx) for each axis on oled_string4
+
+    snprintf(oled_string4, sizeof(oled_string4), "GX%+05d GY%+05d", gyro_x, gyro_y);
+    // Battery: show 4 digits for mV, 4 for mA, 3 for %%
+    snprintf(oled_string5, sizeof(oled_string5), "%04dmV %+04dmA %03d%%", vbatt_mv, current_ma, batt_pct);
+  }
+
+
   refreshLEDs();
   refreshSWValues();
   refreshTOFValues();
   refreshIMUValues();
   refreshINA219Values();
   refreshMotors();
+  refreshLoggedData();
 }
-
-void restartI2C(){
-  HAL_I2C_DeInit(&hi2c1);
-  HAL_I2C_Init(&hi2c1);
-  HAL_I2C_DeInit(&hi2c2);
-  HAL_I2C_Init(&hi2c2);
-}
-
-#ifndef COMPILED_BY_SIMULINK
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
   if(huart->Instance == USART1){
+    simulink_talking = true;
     recievedFromSimulink();
   }
 }
@@ -342,10 +476,9 @@ void main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
-  MX_TIM6_Init();
+  MX_TIM7_Init();
   MX_USART1_UART_Init();
-  MX_USB_DEVICE_Init();
-  MX_FATFS_Init();
+
 
   initMicroMouse();
   
@@ -399,12 +532,9 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.MSIState = RCC_MSI_ON;
-  RCC_OscInitStruct.MSICalibrationValue = 0;
-  RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_11;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 1;
@@ -436,7 +566,7 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
-static void MX_NVIC_Init(void)
+ void MX_NVIC_Init(void) 
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
@@ -456,15 +586,15 @@ static void MX_NVIC_Init(void)
   /* TIM5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM5_IRQn);
-  /* TIM6_DAC_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
   /* DMA2_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel6_IRQn);
   /* DMA2_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+  /* TIM7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM7_IRQn);
 }
 
 /**
@@ -590,7 +720,7 @@ void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x00B00113;
+  hi2c1.Init.Timing = 0x00F01A72;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -616,10 +746,6 @@ void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
-
-  /** I2C Fast mode Plus enable
-  */
-  HAL_I2CEx_EnableFastModePlus(I2C_FASTMODEPLUS_I2C1);
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
@@ -813,7 +939,7 @@ void MX_TIM3_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {
@@ -939,40 +1065,40 @@ void MX_TIM5_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
+  * @brief TIM7 Initialization Function
   * @param None
   * @retval None
   */
-void MX_TIM6_Init(void)
+void MX_TIM7_Init(void)
 {
 
-  /* USER CODE BEGIN TIM6_Init 0 */
+  /* USER CODE BEGIN TIM7_Init 0 */
 
-  /* USER CODE END TIM6_Init 0 */
+  /* USER CODE END TIM7_Init 0 */
 
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN TIM6_Init 1 */
+  /* USER CODE BEGIN TIM7_Init 1 */
 
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 0;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 65535;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 1;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 65535;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM6_Init 2 */
+  /* USER CODE BEGIN TIM7_Init 2 */
 
-  /* USER CODE END TIM6_Init 2 */
+  /* USER CODE END TIM7_Init 2 */
 
 }
 
@@ -1097,10 +1223,12 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PA0 PA1 PA2 PA4
                            PA5 PA6 PA7 PA8
-                           PA9 PA10 PA15 */
+                           PA9 PA10 PA11 PA12
+                           PA15 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_4
                           |GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7|GPIO_PIN_8
-                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_15;
+                          |GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_12
+                          |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -1161,7 +1289,7 @@ void MX_GPIO_Init(void)
 
 /**
   * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM2 interrupt took place, inside
+  * @note   This function is called  when TIM6 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle
@@ -1172,7 +1300,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM2) {
+  if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -1215,3 +1343,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
+/*SimulinkGeneratedCode*/

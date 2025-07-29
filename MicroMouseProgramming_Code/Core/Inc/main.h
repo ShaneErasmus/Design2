@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define I2C_TIMEOUT 20
+#define I2C_TIMEOUT 30
+
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -55,15 +56,15 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 void MX_GPIO_Init(void);
 void MX_DMA_Init(void);
-void MX_TIM3_Init(void);
-void MX_I2C2_Init(void);
-void MX_TIM4_Init(void);
-void MX_USART1_UART_Init(void);
-void MX_TIM1_Init(void);
-void MX_TIM5_Init(void);
-void MX_TIM6_Init(void);
-void MX_ADC1_Init(void);
 void MX_I2C1_Init(void);
+void MX_I2C2_Init(void);
+void MX_ADC1_Init(void);
+void MX_TIM1_Init(void);
+void MX_TIM3_Init(void);
+void MX_TIM4_Init(void);
+void MX_TIM5_Init(void);
+void MX_TIM7_Init(void);
+void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN EFP */
 void initMicroMouse(void);
