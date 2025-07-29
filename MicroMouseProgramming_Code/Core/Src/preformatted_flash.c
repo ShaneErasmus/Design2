@@ -6,6 +6,14 @@
 #include <string.h>
 #include "main.h"
 
+uint8_t State = 1;
+
+uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+uint16_t usb_storage_buffer_index[2] = {0, 0};
+uint8_t active_usb_buffer = 0;
+uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
+uint8_t readyToLog;
+
 uint32_t GetPage(uint32_t Address)
 {
     for (int indx = 0; indx < STM32L476_NUM_PAGES; indx++)
@@ -90,9 +98,7 @@ uint8_t USB_storage_buffer[STORAGE_BLK_NBR*STORAGE_BLK_SIZ];
 #ifdef USE_FLASH
 
 uint8_t UID[12] = {0};
-extern uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
-extern uint16_t usb_storage_buffer_index[2];
-extern uint8_t active_usb_buffer;
+
 
 #define UID_BASE 0x1FFF7590
 

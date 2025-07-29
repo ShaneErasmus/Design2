@@ -127,7 +127,7 @@ extern uint8_t SW[2];
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
-uint8_t State = 1;
+extern uint8_t State;
 // functions
 
 void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
@@ -155,8 +155,6 @@ void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
     // Reload the timer settings to apply the changes immediately
     tim->EGR = TIM_EGR_UG;  // Generate an update event to reload PSC and ARR
 }
-
-
 
 void sendToSimulink(){
     HAL_UART_Transmit(&huart1, (uint8_t *) "J_A"           ,3 , HAL_MAX_DELAY);
@@ -260,6 +258,10 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
 }
 
 void restartI2C(){
+  TIM3->CCR4 = 0;
+  TIM3->CCR3 = 0;
+  TIM4->CCR2 = 0;
+  TIM4->CCR1 = 0;
   HAL_I2C_DeInit(&hi2c1);
   HAL_I2C_Init(&hi2c1);
   HAL_I2C_DeInit(&hi2c2);
@@ -270,33 +272,43 @@ void restartI2C(){
 
 
 
-uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
-uint16_t usb_storage_buffer_index[2] = {0, 0};
-uint8_t active_usb_buffer = 0;
-uint8_t readyToLog;
-
-#define LOG_FLASH_START_ADDR 0x08040000
-#define LOG_FLASH_PAGE_SIZE  0x800
- uint32_t log_flash_write_addr = LOG_FLASH_START_ADDR;
+extern uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
+extern uint16_t usb_storage_buffer_index[2];
+extern uint8_t active_usb_buffer;
+extern uint8_t readyToLog;
+extern uint32_t log_flash_write_addr;
+uint8_t log_time_counter = 0;
  
+
 
 void initLogs() {
     // Configure TIM7 for 30Hz
     configureTimer(50, TIM7);
     HAL_TIM_Base_Start_IT(&htim7);
     readyToLog = false;
+    HAL_DBGMCU_EnableDBGSleepMode();
+    HAL_DBGMCU_EnableDBGStandbyMode();
+    HAL_DBGMCU_EnableDBGStopMode();
+
 }
 
+bool first_buffer = true;
+bool logging_enabled = false;
 void refreshLoggedData() {
+      #ifdef COMPILED_BY_SIMULINK
+      log_time_counter++;
+      if (log_time_counter >= 100/25) { // 1ms/Hz
+        readyToLog = true;
+        log_time_counter = 0;
+      } 
+      #endif
 
-     bool first_buffer = true;
- 
-     bool logging_enabled = false;
- 
     if (!readyToLog) return;
+    readyToLog = false;
     // Enable logging if any button is pressed (active low)
     if (!logging_enabled && (SW[0] != SW[1])) {
         logging_enabled = true;
+        HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port , MOTOR_EN_Pin , GPIO_PIN_SET);
     }
     if (!logging_enabled) return;
 
@@ -307,7 +319,7 @@ void refreshLoggedData() {
         usb_storage_buffer_index[active_usb_buffer] = 12;
         first_buffer = false;
 
-         FLASH_EraseInitTypeDef EraseInitStruct;
+        FLASH_EraseInitTypeDef EraseInitStruct;
  
         uint32_t PAGEError;
         HAL_FLASH_Unlock();
@@ -362,7 +374,6 @@ void refreshLoggedData() {
     }
     readyToLog = false;
 }
-
 
 #ifndef COMPILED_BY_SIMULINK
 
@@ -581,6 +592,9 @@ void SystemClock_Config(void)
   /* DMA2_Channel7_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel7_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel7_IRQn);
+  /* TIM7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM7_IRQn);
 }
 
 /**
@@ -925,7 +939,7 @@ void MX_TIM3_Init(void)
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
   {

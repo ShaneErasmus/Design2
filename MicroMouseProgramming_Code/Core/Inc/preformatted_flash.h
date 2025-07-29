@@ -65,6 +65,10 @@ float Flash_Read_NUM(uint32_t StartSectorAddress);
     #define LOG_FILE_DATA                    0x08045C25
 #endif
 
+#define USB_BUFFER_SIZE (2*1024)
+#define LOG_FLASH_START_ADDR 0x08040000
+#define LOG_FLASH_PAGE_SIZE  0x800
+
 #define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
 typedef struct {
     uint8_t state;

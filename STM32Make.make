@@ -31,7 +31,7 @@ endif
 ######################################
 # This is the name of the embedded target which will be build
 # The final file name will also have debug or release appended to it.
-TARGET ?= MicroMouseProgramming
+TARGET ?= MicroMouse_Deploy
 
 #######################################
 # Build directories
@@ -75,63 +75,6 @@ endif
 ######################################
 # C sources
 C_SOURCES =  \
-Core/Src/ADCs.c \
-Core/Src/Buttons.c \
-Core/Src/IMU.c \
-Core/Src/INA219.c \
-Core/Src/LEDs.c \
-Core/Src/Motors.c \
-Core/Src/SSD1306.c \
-Core/Src/VL53L0X.c \
-Core/Src/instrumented/ADCs.c \
-Core/Src/instrumented/Buttons.c \
-Core/Src/instrumented/IMU.c \
-Core/Src/instrumented/INA219.c \
-Core/Src/instrumented/LEDs.c \
-Core/Src/instrumented/Motors.c \
-Core/Src/instrumented/SSD1306.c \
-Core/Src/instrumented/VL53L0X.c \
-Core/Src/instrumented/main.c \
-Core/Src/instrumented/preformatted_flash.c \
-Core/Src/instrumented/stm32l4xx_hal_msp.c \
-Core/Src/instrumented/stm32l4xx_hal_timebase_tim.c \
-Core/Src/instrumented/stm32l4xx_it.c \
-Core/Src/instrumented/syscalls.c \
-Core/Src/instrumented/sysmem.c \
-Core/Src/instrumented/system_stm32l4xx.c \
-Core/Src/instrumented/to_compile_flash.c \
-Core/Src/main.c \
-Core/Src/preformatted_flash.c \
-Core/Src/stm32l4xx_hal_msp.c \
-Core/Src/stm32l4xx_hal_timebase_tim.c \
-Core/Src/stm32l4xx_it.c \
-Core/Src/syscalls.c \
-Core/Src/sysmem.c \
-Core/Src/system_stm32l4xx.c \
-Core/Src/to_compile_flash.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_adc_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c \
-FATFS/Target/user_diskio.c \
-USB_DEVICE/App/usbd_storage_if.c
 
 
 CXX_SOURCES = \
@@ -139,7 +82,6 @@ CXX_SOURCES = \
 
 # ASM sources
 ASM_SOURCES =  \
-startup_stm32l476xx.s
 
 
 #######################################
@@ -195,10 +137,10 @@ OPENOCD ?= openocd
 CPU = -mcpu=cortex-m4
 
 # fpu
-FPU = -mfpu=fpv4-sp-d16
+FPU = 
 
 # float-abi
-FLOAT-ABI = -mfloat-abi=hard
+FLOAT-ABI = 
 
 # mcu
 MCU = $(CPU) -mthumb $(FPU) $(FLOAT-ABI)
@@ -209,14 +151,10 @@ AS_DEFS =
 
 # C defines
 C_DEFS =  \
--DSTM32L476xx \
--DUSE_HAL_DRIVER
 
 
 # CXX defines
 CXX_DEFS =  \
--DSTM32L476xx \
--DUSE_HAL_DRIVER
 
 
 # AS includes
@@ -224,18 +162,6 @@ AS_INCLUDES = \
 
 # C includes
 C_INCLUDES =  \
--ICore/Inc \
--IDrivers/CMSIS/Device/ST/STM32L4xx/Include \
--IDrivers/CMSIS/Include \
--IDrivers/STM32L4xx_HAL_Driver/Inc \
--IDrivers/STM32L4xx_HAL_Driver/Inc/Legacy \
--IFATFS/App \
--IFATFS/Target \
--IMiddlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc \
--IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
--IMiddlewares/Third_Party/FatFs/src \
--IUSB_DEVICE/App \
--IUSB_DEVICE/Target
 
 
 
@@ -249,7 +175,7 @@ CXXFLAGS = $(MCU) $(CXX_DEFS) $(C_INCLUDES) $(OPTIMIZATION_FLAGS)
 # Add additional flags
 CFLAGS += -Wall -fdata-sections -ffunction-sections 
 ASFLAGS += -Wall -fdata-sections -ffunction-sections 
-CXXFLAGS += 
+CXXFLAGS += -fno-exceptions -fno-rtti 
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
@@ -265,15 +191,15 @@ CXXFLAGS += $(ASSEMBLER_LIST_OUTPUT_FLAG)
 # LDFLAGS
 #######################################
 # link script
-LDSCRIPT = STM32L476VETx_FLASH.ld
+LDSCRIPT = MicroMouseProgramming_Code/STM32L476VETX_FLASH.ld
 
 # libraries
-LIBS = -lc -lm -lnosys 
+LIBS = -lc -lm 
 LIBDIR = \
 
 
 # Additional LD Flags from config file
-ADDITIONALLDFLAGS = -specs=nano.specs 
+ADDITIONALLDFLAGS = -Wl,--print-memory-usage 
 
 LDFLAGS = $(MCU) $(ADDITIONALLDFLAGS) -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIRECTORY)/$(TARGET).map,--cref -Wl,--gc-sections
 
@@ -385,14 +311,6 @@ clean:
 # custom makefile rules
 #######################################
 
-
-
-#######################################
-# sayhello
-#######################################
-sayhello: $(BUILD_DIR)/$(TARGET).elf
-	echo "hello"
-      
 	
 #######################################
 # dependencies

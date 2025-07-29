@@ -28,7 +28,6 @@ extern TIM_HandleTypeDef htim4;
 
 
 void initMotors() {
-    HAL_GPIO_WritePin(MOTOR_EN_GPIO_Port , MOTOR_EN_Pin , GPIO_PIN_SET);
     // Start PWM for motors
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
     HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
