@@ -3,7 +3,7 @@
 # User settings
 PACKET_SIZE_BYTES = 1+1+1+(3*2)+(3*2)+1  # Size of MicroMouseLog_t in bytes
 TOTAL_LOG_BYTES = 256 * 1024  # 256KB
-SAMPLING_RATE_HZ = 50  # Samples per second
+SAMPLING_RATE_HZ = 25  # Samples per second
 
 # Calculations
 num_packets = TOTAL_LOG_BYTES // PACKET_SIZE_BYTES
