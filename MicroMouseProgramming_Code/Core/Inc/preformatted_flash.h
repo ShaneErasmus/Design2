@@ -70,19 +70,6 @@ float Flash_Read_NUM(uint32_t StartSectorAddress);
 #define LOG_FLASH_PAGE_SIZE  0x800
 
 #define USB_PREFORMATED (((const uint8_t*)USB_FLASH_START_ADDRESS))
-typedef struct {
-    uint8_t state;
-    int8_t Motor_Left;
-    int8_t Motor_Right;
-    uint8_t crc; // CRC for data integrity
-    uint16_t Distance_Left;
-    uint16_t Distance_Centre;
-    uint16_t Distance_Right;
-    uint16_t IMU_Accel_X;
-    uint16_t IMU_Accel_Y;
-    uint16_t IMU_Gyro_Z;
-    // Add more fields as needed
-} MicroMouseLog_t;
 
 // Function to get a pointer to the preformatted data
 uint8_t* get_preformatted_data(void);

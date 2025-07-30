@@ -142,17 +142,6 @@ void write_usb_storage_buffer_to_flash(void) {
     }
     HAL_FLASH_Lock();
 }
-
-// Log a struct to the buffer, write to flash if full
-void log_to_usb_storage_buffer(const MicroMouseLog_t* log) {
-    if (usb_storage_buffer_index[active_usb_buffer] + sizeof(MicroMouseLog_t) > USB_BUFFER_SIZE) {
-        // Buffer full, write to flash
-        write_usb_storage_buffer_to_flash();
-        usb_storage_buffer_index[active_usb_buffer] = 0;
-    }
-    memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], log, sizeof(MicroMouseLog_t));
-    usb_storage_buffer_index[active_usb_buffer] += sizeof(MicroMouseLog_t);
-}
 #endif
 
 

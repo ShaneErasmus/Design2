@@ -279,7 +279,19 @@ extern uint8_t readyToLog;
 extern uint32_t log_flash_write_addr;
 uint8_t log_time_counter = 0;
  
-
+typedef struct __attribute__((packed)) {
+    uint8_t state;
+    int8_t Motor_Left;
+    int8_t Motor_Right;
+    uint16_t Distance_Left;
+    uint16_t Distance_Centre;
+    uint16_t Distance_Right;
+    uint16_t IMU_Accel_X;
+    uint16_t IMU_Accel_Y;
+    uint16_t IMU_Gyro_Z;
+    uint8_t crc; // CRC for data integrity
+    // Add more fields as needed
+} MicroMouseLog_t;
 
 void initLogs() {
     // Configure TIM7 for 30Hz
