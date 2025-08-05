@@ -6,7 +6,7 @@
 #include <string.h>
 #include "main.h"
 
-uint8_t State = 1;
+uint8_t STATE = 1;
 
 uint8_t USB_storage_buffer[2][USB_BUFFER_SIZE];
 uint16_t usb_storage_buffer_index[2] = {0, 0};

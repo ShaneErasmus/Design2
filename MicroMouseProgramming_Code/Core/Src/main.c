@@ -91,7 +91,7 @@ int32_t counter = 0;
 float SW1;
 float SW2;
 
-int8_t bigBuffer[3+5+3+(18*5)]; // 5 bytes for mouse control + headers and terminators
+int8_t bigBuffer[3+5+(18*5)+1+3]; // 5 bytes for mouse control + headers and terminators
 uint8_t header[3];
 uint8_t terminator[3];
 int8_t buffer[5];
@@ -127,7 +127,7 @@ extern uint8_t SW[2];
 extern uint8_t batteryLife;
 extern int16_t Vbattery, Vshunt, Current, config, Power;
 extern float miliwattAVG,miliWattTime,totalPowerUsed;
-extern uint8_t State;
+extern uint8_t STATE;
 // functions
 
 void configureTimer(float desired_frequency, TIM_TypeDef* tim) {
@@ -240,6 +240,8 @@ void recievedFromSimulink(){
             oled_string5[i] = bigBuffer[80 + i];
           }
 
+          STATE = bigBuffer[98];
+
         }
     }
 
@@ -344,7 +346,7 @@ void refreshLoggedData() {
     }
 
     MicroMouseLog_t log;
-    log.state = State;
+    log.state = STATE;
     log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
     log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
     log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
@@ -490,6 +492,7 @@ void main(void)
   MX_TIM5_Init();
   MX_TIM7_Init();
   MX_USART1_UART_Init();
+  MX_NVIC_Init();
 
 
   initMicroMouse();
@@ -502,6 +505,7 @@ void main(void)
 
   HAL_UART_Receive_DMA(&huart1,(uint8_t *) &bigBuffer, sizeof(bigBuffer));
 
+  HAL_Delay(5000);
 
   while (1)
   {
