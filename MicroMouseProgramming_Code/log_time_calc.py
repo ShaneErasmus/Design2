@@ -1,7 +1,7 @@
 # Calculate total logging time for MicroMouse log packets
 
 # User settings
-PACKET_SIZE_BYTES = 1+1+1+(3*2)+(3*2)+1  # Size of MicroMouseLog_t in bytes
+PACKET_SIZE_BYTES = 1+1+1+(3*2)+2+(2*4)+3+3+1  # Size of MicroMouseLog_t in bytes
 TOTAL_LOG_BYTES = 256 * 1024  # 256KB
 SAMPLING_RATE_HZ = 25  # Samples per second
 
