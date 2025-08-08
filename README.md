@@ -13,6 +13,14 @@ git submodule update --init --recursive
 
 All paths in this repo are relative, so it works from any subdirectory.
 
+## First Time Hardware setup
+After completing your hardware assembly, there are 4 demo binary files. These are for the 4 permutations for the 4 potential wiring of your motors.
+Flash AlignDemoX.bin onto the processor board.
+Press one of the buttons close to the IMU to activate the motors.
+If your robot isnt travelling forwards, flash a different DemoX until your robot is trying to move forward. 
+It should avoid obstacles on each of its sides and indicate on the LEDS of the processor board if there is an object within 200mm
+
+This should indicate that your hardware works
 
 ## For students:
 Use [`StudentTemplate.slx`](./StudentTemplate.slx) as a clean starting point for your own implementation.  
@@ -28,3 +36,4 @@ Use [`MicroMouse_RapidDevelopment.slx`](./MicroMouse_RapidDevelopment.slx)
 
 ## For developing with C Code:
 Open the [`MicroMouseProgramming_Code`](./MicroMouseProgramming_Code) directory as an STM32 Project in VS Code or STM32CubeIDE.
+
