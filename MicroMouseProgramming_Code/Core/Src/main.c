@@ -75,7 +75,8 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
- void MX_NVIC_Init(void); 
+ void MX_NVIC_Init(void);
+ 
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -283,6 +284,7 @@ uint8_t log_time_counter = 0;
  
 typedef struct __attribute__((packed)) {
     uint8_t state;
+    uint8_t LEDs[3];
     int8_t Motor_Left;
     int8_t Motor_Right;
     uint16_t Distance_Left;
@@ -290,20 +292,22 @@ typedef struct __attribute__((packed)) {
     uint16_t Distance_Right;
     uint16_t IMU_Accel_X;
     uint16_t IMU_Accel_Y;
+    uint16_t IMU_Accel_Z;
+    uint16_t IMU_Gyro_X;
+    uint16_t IMU_Gyro_Y;
     uint16_t IMU_Gyro_Z;
-    uint8_t crc; // CRC for data integrity
-    // Add more fields as needed
 } MicroMouseLog_t;
 
 void initLogs() {
     // Configure TIM7 for 30Hz
-    configureTimer(50, TIM7);
+    configureTimer(25, TIM7);
     HAL_TIM_Base_Start_IT(&htim7);
     readyToLog = false;
+    #ifndef COMPILED_BY_SIMULINK 
     HAL_DBGMCU_EnableDBGSleepMode();
     HAL_DBGMCU_EnableDBGStandbyMode();
     HAL_DBGMCU_EnableDBGStopMode();
-
+    #endif
 }
 
 bool first_buffer = true;
@@ -347,6 +351,9 @@ void refreshLoggedData() {
 
     MicroMouseLog_t log;
     log.state = STATE;
+    log.LEDs[0] = LED[0];
+    log.LEDs[1] = LED[1];
+    log.LEDs[2] = LED[2];
     log.Distance_Left = (uint16_t)(TOF_left_result.Distance > 4095 ? 4095 : TOF_left_result.Distance);
     log.Distance_Centre = (uint16_t)(TOF_centre_result.Distance > 4095 ? 4095 : TOF_centre_result.Distance);
     log.Distance_Right = (uint16_t)(TOF_right_result.Distance > 4095 ? 4095 : TOF_right_result.Distance);
@@ -355,6 +362,9 @@ void refreshLoggedData() {
     // Add IMU accel x, accel y, and gyro z
     log.IMU_Accel_X = (uint16_t)(IMU_Accel[0] * 1000.0f);
     log.IMU_Accel_Y = (uint16_t)(IMU_Accel[1] * 1000.0f);
+    log.IMU_Accel_Z = (uint16_t)(IMU_Accel[2] * 1000.0f);
+    log.IMU_Gyro_X = (uint16_t)(IMU_Gyro[0] * 1000.0f);
+    log.IMU_Gyro_Y = (uint16_t)(IMU_Gyro[1] * 1000.0f);
     log.IMU_Gyro_Z = (uint16_t)(IMU_Gyro[2] * 1000.0f);
     // Check if flash at 0x807FFFF is not 0xFF, stop logging and indicate full
     if (*((uint8_t*)0x807FFFF) != 0xFF) {
@@ -373,7 +383,7 @@ void refreshLoggedData() {
     uint8_t *uid_ptr = (uint8_t*)0x1FFF7590;
     uint32_t uid24 = (uid_ptr[9] << 16) | (uid_ptr[10] << 8) | uid_ptr[11];
     uint32_t log24 = ((uint8_t)log.Motor_Left << 16) | ((uint8_t)log.Motor_Right << 8) | ((uint8_t)log.state);
-    log.crc = uid24 & log24;
+    // log.crc = uid24 & log24;
     memcpy(&USB_storage_buffer[active_usb_buffer][usb_storage_buffer_index[active_usb_buffer]], &log, sizeof(MicroMouseLog_t));
     usb_storage_buffer_index[active_usb_buffer] += sizeof(log);
 
@@ -582,7 +592,8 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
- void MX_NVIC_Init(void) 
+ void MX_NVIC_Init(void)
+ 
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
