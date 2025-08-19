@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define I2C_TIMEOUT 30
+#define I2C_TIMEOUT 10
 
 /* USER CODE END Includes */
 

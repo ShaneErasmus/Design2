@@ -261,16 +261,18 @@ uint8_t I2C_Scan(I2C_HandleTypeDef *hi2c, uint8_t *foundAddresses, uint8_t maxAd
 }
 
 void restartI2C(){
-  TIM3->CCR4 = 0;
-  TIM3->CCR3 = 0;
-  TIM4->CCR2 = 0;
-  TIM4->CCR1 = 0;
+  #ifdef I2C_SAFE_RESTART
+    TIM3->CCR4 = 0;
+    TIM3->CCR3 = 0;
+    TIM4->CCR2 = 0;
+    TIM4->CCR1 = 0;
+  #endif
   HAL_I2C_DeInit(&hi2c1);
   HAL_I2C_Init(&hi2c1);
   HAL_I2C_DeInit(&hi2c2);
   HAL_I2C_Init(&hi2c2);
+  // Attempt to clear I2C bus error (BERR)}
 }
-
 // Logging
 
 
@@ -519,6 +521,7 @@ void main(void)
 
   while (1)
   {
+    MOTOR_RS = 100;
     // Process any pending flash writes from USB storage
     #ifdef USE_FLASH
 
