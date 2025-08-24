@@ -454,18 +454,6 @@ void updateMicroMouse(){
   int current_ma = (int)Current;
   int batt_pct = (int)batteryLife;
 
-  if (!simulink_talking){
-    // Distance: show 4 digits for each sensor (mm)
-    snprintf(oled_string2, sizeof(oled_string2), "%04dL %04dC %04dR", left_mm, centre_mm, right_mm);
-    // Accel: show only X and Y
-    snprintf(oled_string3, sizeof(oled_string3), "AX%+05d AY%+05d", accel_x, accel_y);
-    // IMU Gyro: show signed 5 digits (xx.xx) for each axis on oled_string4
-
-    snprintf(oled_string4, sizeof(oled_string4), "GX%+05d GY%+05d", gyro_x, gyro_y);
-    // Battery: show 4 digits for mV, 4 for mA, 3 for %%
-    snprintf(oled_string5, sizeof(oled_string5), "%04dmV %+04dmA %03d%%", vbatt_mv, current_ma, batt_pct);
-  }
-
 
   refreshLEDs();
   refreshSWValues();
@@ -521,7 +509,7 @@ void main(void)
 
   while (1)
   {
-    MOTOR_RS = 100;
+
     // Process any pending flash writes from USB storage
     #ifdef USE_FLASH
 
