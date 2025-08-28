@@ -75,8 +75,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
- void MX_NVIC_Init(void);
- 
+static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -583,8 +582,7 @@ void SystemClock_Config(void)
   * @brief NVIC Configuration.
   * @retval None
   */
- void MX_NVIC_Init(void)
- 
+static void MX_NVIC_Init(void)
 {
   /* FLASH_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(FLASH_IRQn, 0, 0);
@@ -866,7 +864,7 @@ void MX_TIM1_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 500-1;
+  sConfigOC.Pulse = 1000-1;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -884,6 +882,7 @@ void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  sConfigOC.Pulse = 500-1;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
@@ -905,7 +904,10 @@ void MX_TIM1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM1_Init 2 */
-
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
   /* USER CODE END TIM1_Init 2 */
   HAL_TIM_MspPostInit(&htim1);
 
@@ -1361,5 +1363,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/*SimulinkGeneratedCode*/

@@ -129,9 +129,7 @@ Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_tim_ex.c \
 Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.c \
-Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c \
-FATFS/Target/user_diskio.c \
-USB_DEVICE/App/usbd_storage_if.c
+Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.c
 
 
 CXX_SOURCES = \
@@ -228,14 +226,7 @@ C_INCLUDES =  \
 -IDrivers/CMSIS/Device/ST/STM32L4xx/Include \
 -IDrivers/CMSIS/Include \
 -IDrivers/STM32L4xx_HAL_Driver/Inc \
--IDrivers/STM32L4xx_HAL_Driver/Inc/Legacy \
--IFATFS/App \
--IFATFS/Target \
--IMiddlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc \
--IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
--IMiddlewares/Third_Party/FatFs/src \
--IUSB_DEVICE/App \
--IUSB_DEVICE/Target
+-IDrivers/STM32L4xx_HAL_Driver/Inc/Legacy
 
 
 
